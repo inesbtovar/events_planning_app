@@ -36,11 +36,22 @@ export default async function DashboardPage() {
             <span style={{ color: '#2D2016', fontWeight: '600', fontSize: '16px' }}>EventsDock</span>
           </div>
           <div className="flex items-center gap-5">
-            <span style={{ color: '#A08060', fontSize: '13px' }} className="hidden sm:block">{user.email}</span>
-           <div className="flex items-center gap-5">
-            <SignOutButton />
-          </div>
-            </div>
+  <span style={{ color: '#A08060', fontSize: '13px' }} className="hidden sm:block">{user.email}</span>
+  <div className="flex items-center gap-4">
+    <Link href="/pricing" style={{
+      fontSize: '13px',
+      color: '#C47A3A',
+      fontWeight: '500',
+      border: '1px solid #F0D5B8',
+      background: '#FDF0E6',
+      padding: '6px 14px',
+      borderRadius: '99px',
+    }} className="hover:opacity-80 transition-opacity">
+      ✦ Upgrade
+    </Link>
+    <SignOutButton />
+  </div>
+</div>
         </div>
       </nav>
 
