@@ -2,7 +2,7 @@
 'use client'
 import { useState } from 'react'
 import Link from 'next/link'
-import { PLANS } from '@/lib/stripe'
+import { PLANS } from '@/lib/plans-config'
 
 export default function PricingPage() {
   const [loading, setLoading] = useState<string | null>(null)

@@ -1,6 +1,6 @@
 // lib/plans.ts
 import { createClient } from '@/lib/supabase/server'
-import { PLANS } from '@/lib/stripe'
+import { PLANS } from '@/lib/plans-config'
 
 export async function getUserPlan() {
   const supabase = await createClient()
