@@ -4,11 +4,9 @@ import { useState } from 'react'
 import Link from 'next/link'
 import { PLANS } from '@/lib/plans-config'
 
-export default function PricingPage() {
-  const [loading, setLoading] = useState<string | null>(null)
-
-  async function checkout(plan: 'starter' | 'pro') {
-    setLoading(plan)
+async function checkout(plan: 'starter' | 'pro') {
+  setLoading(plan)
+  try {
     const priceId = plan === 'starter'
       ? process.env.NEXT_PUBLIC_STRIPE_STARTER_PRICE_ID
       : process.env.NEXT_PUBLIC_STRIPE_PRO_PRICE_ID
@@ -18,10 +16,22 @@ export default function PricingPage() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ priceId, plan }),
     })
-    const data = await res.json()
+
+    const text = await res.text()
+    const data = text ? JSON.parse(text) : {}
+
+    if (!res.ok) {
+      alert('Error: ' + (data.error || 'Something went wrong'))
+      return
+    }
+
     if (data.url) window.location.href = data.url
+  } catch (err: any) {
+    alert('Error: ' + err.message)
+  } finally {
     setLoading(null)
   }
+}
 
   return (
     <div style={{ minHeight: '100vh', background: '#FDFAF6', fontFamily: 'system-ui, sans-serif' }}>
