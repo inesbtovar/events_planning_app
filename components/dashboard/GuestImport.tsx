@@ -18,8 +18,8 @@ export default function GuestImport({ eventId }: Props) {
   const [saving, setSaving]         = useState(false)
   const fileRef                     = useRef<HTMLInputElement>(null)
 
-  // Workbook kept in memory so we can switch sheets without re-uploading
-  const [workbook, setWorkbook]     = useState<any>(null)
+  // Raw file kept in memory so we can switch sheets without re-uploading
+  const [rawBuffer, setRawBuffer]   = useState<ArrayBuffer | null>(null)
   const [parsed, setParsed]         = useState<ParsedFile | null>(null)
   const [selectedSheet, setSelectedSheet] = useState('')
 
@@ -40,25 +40,60 @@ export default function GuestImport({ eventId }: Props) {
 
   function reset() {
     setName(''); setEmail(''); setPhone(''); setDietary(''); setPlusOne(false)
-    setParsed(null); setWorkbook(null); setSelectedSheet('')
+    setParsed(null); setRawBuffer(null); setSelectedSheet('')
     setColName(''); setColEmail(''); setColPhone('')
     setColDietary(''); setColPlusOne('')
     setMode('idle')
     if (fileRef.current) fileRef.current.value = ''
   }
 
-  // Load a specific sheet from the already-parsed workbook
-  function loadSheet(wb: any, sheetName: string, fileName: string) {
-    const XLSX = (window as any).__XLSX__
-    const sheet = wb.Sheets[sheetName]
-    const rows = XLSX.utils.sheet_to_json(sheet, { defval: '' }) as Record<string, string>[]
+  // Parse a sheet from buffer using ExcelJS
+  async function parseSheet(buffer: ArrayBuffer, sheetIndex: number, fileName: string, sheetNames: string[]) {
+    const ExcelJS = await import('exceljs')
+    const workbook = new ExcelJS.Workbook()
+    await workbook.xlsx.load(buffer)
 
-    if (!rows.length) {
-      toast.error(`Sheet "${sheetName}" appears to be empty. Please pick another.`)
+    const sheet = workbook.worksheets[sheetIndex]
+    if (!sheet) {
+      toast.error('Could not read that sheet.')
       return
     }
 
-    const headers = Object.keys(rows[0])
+    // Extract headers from first row
+    const headers: string[] = []
+    sheet.getRow(1).eachCell({ includeEmpty: true }, (cell, colIndex) => {
+      headers[colIndex - 1] = cell.value?.toString().trim() ?? ''
+    })
+
+    // Extract data rows
+    const rows: Record<string, string>[] = []
+    sheet.eachRow((row, rowIndex) => {
+      if (rowIndex === 1) return
+      const obj: Record<string, string> = {}
+      row.eachCell({ includeEmpty: true }, (cell, colIndex) => {
+        const header = headers[colIndex - 1]
+        if (header) {
+          const val = cell.value
+          if (val === null || val === undefined) {
+            obj[header] = ''
+          } else if (typeof val === 'object' && 'text' in val) {
+            obj[header] = (val as any).text
+          } else if (typeof val === 'object' && 'result' in val) {
+            obj[header] = String((val as any).result)
+          } else {
+            obj[header] = String(val)
+          }
+        }
+      })
+      if (Object.values(obj).some(v => v !== '')) {
+        rows.push(obj)
+      }
+    })
+
+    if (rows.length === 0) {
+      toast.error(`Sheet "${sheetNames[sheetIndex]}" appears to be empty. Please pick another.`)
+      return
+    }
 
     // Auto-guess columns
     const norm = (s: string) => s.toLowerCase().replace(/[\s_\-\.]/g, '')
@@ -68,43 +103,51 @@ export default function GuestImport({ eventId }: Props) {
     setColDietary(headers.find(h => ['dietary','dieta','restricoes','alimentacao','food'].includes(norm(h))) ?? '')
     setColPlusOne(headers.find(h => ['plusone','plus','acompanhante','guest2'].includes(norm(h))) ?? '')
 
-    setParsed({ headers, rows, fileName, sheetNames: wb.SheetNames })
-    setSelectedSheet(sheetName)
+    setParsed({ headers, rows, fileName, sheetNames })
+    setSelectedSheet(sheetNames[sheetIndex])
     setMode('mapping')
   }
 
-  // Step 1: read the file, store workbook, decide what to do
+  // Step 1: read the file, get sheet names, decide what to do
   async function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
     if (!file) return
 
     try {
-      const XLSX = await import('xlsx')
-      // Store on window so loadSheet can access it without prop-drilling
-      ;(window as any).__XLSX__ = XLSX
-
       const buffer = await file.arrayBuffer()
-      const wb = XLSX.read(buffer, { type: 'buffer' })
-      setWorkbook(wb)
+      setRawBuffer(buffer)
 
-      if (wb.SheetNames.length === 1) {
-        // Only one sheet — skip the picker, go straight to column mapper
-        loadSheet(wb, wb.SheetNames[0], file.name)
+      const ExcelJS = await import('exceljs')
+      const workbook = new ExcelJS.Workbook()
+      await workbook.xlsx.load(buffer)
+
+      const sheetNames = workbook.worksheets.map(ws => ws.name)
+
+      if (sheetNames.length === 0) {
+        toast.error('No sheets found in this file.')
+        reset()
+        return
+      }
+
+      if (sheetNames.length === 1) {
+        // Only one sheet — go straight to column mapper
+        await parseSheet(buffer, 0, file.name, sheetNames)
       } else {
         // Multiple sheets — show picker first
-        setParsed({ headers: [], rows: [], fileName: file.name, sheetNames: wb.SheetNames })
+        setParsed({ headers: [], rows: [], fileName: file.name, sheetNames })
         setMode('sheet')
       }
     } catch {
-      toast.error('Could not read the file. Make sure it is .xlsx, .xls or .csv.')
+      toast.error('Could not read the file. Make sure it is .xlsx or .xls.')
       reset()
     }
   }
 
   // Step 2 (only if multiple sheets): user picks a sheet
-  function handleSheetSelect(sheetName: string) {
-    if (!workbook || !parsed) return
-    loadSheet(workbook, sheetName, parsed.fileName)
+  async function handleSheetSelect(sheetName: string) {
+    if (!rawBuffer || !parsed) return
+    const sheetIndex = parsed.sheetNames.indexOf(sheetName)
+    await parseSheet(rawBuffer, sheetIndex, parsed.fileName, parsed.sheetNames)
   }
 
   // Step 3: user confirmed column mappings, send to API
@@ -147,7 +190,16 @@ export default function GuestImport({ eventId }: Props) {
         body: JSON.stringify({ eventId, guests }),
       })
       const data = await res.json()
-      if (data.error) throw new Error(data.error)
+      if (data.error) {
+        if (data.upgrade) {
+          toast.error(data.error + ' — Upgrade your plan to add more guests.')
+        } else {
+          throw new Error(data.error)
+        }
+        setMode('mapping')
+        setImporting(false)
+        return
+      }
 
       toast.success(`${data.imported} guest${data.imported === 1 ? '' : 's'} imported!`)
       reset()
@@ -172,7 +224,14 @@ export default function GuestImport({ eventId }: Props) {
         body: JSON.stringify({ eventId, name, email, phone, dietary, plusOne }),
       })
       const data = await res.json()
-      if (data.error) throw new Error(data.error)
+      if (data.error) {
+        if (data.upgrade) {
+          toast.error(data.error + ' — Upgrade your plan to add more guests.')
+        } else {
+          throw new Error(data.error)
+        }
+        return
+      }
       toast.success(`${name} added!`)
       reset()
       window.location.reload()
@@ -219,7 +278,7 @@ export default function GuestImport({ eventId }: Props) {
     </div>
   )
 
-  // ─── Idle ────────────────────────────────────────────────────────────────────
+  // ─── Idle ─────────────────────────────────────────────────────────────────────
   if (mode === 'idle') return (
     <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
       <button onClick={() => setMode('add')} style={{
@@ -232,7 +291,7 @@ export default function GuestImport({ eventId }: Props) {
         </svg>
         Add guest
       </button>
-      <input ref={fileRef} type="file" accept=".xlsx,.xls,.csv"
+      <input ref={fileRef} type="file" accept=".xlsx,.xls"
         onChange={handleFile} className="hidden" id="guest-file-input" />
       <label htmlFor="guest-file-input" style={{
         border: '1px solid #EDE8E0', background: 'white', color: '#7A6652',
