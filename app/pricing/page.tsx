@@ -61,7 +61,7 @@ export default function PricingPage() {
       setUser(user)
       if (user) {
         supabase
-          .from('users')
+          .from('profiles')
           .select('plan')
           .eq('id', user.id)
           .single()
