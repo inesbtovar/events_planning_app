@@ -38,7 +38,7 @@ export default async function DashboardPage() {
           </Link>
           <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
             <span style={{ color: 'var(--text-muted)', fontSize: '13px' }} className="hidden sm:block">{user.email}</span>
-            <Link href="/dashboard/settings/billing" style={{
+            <Link href="/dashboard/billing" style={{
               display: 'inline-flex', alignItems: 'center', gap: '6px',
               background: 'var(--teal-glow)', border: '1px solid var(--border)',
               borderRadius: '99px', padding: '4px 12px',
@@ -48,7 +48,7 @@ export default async function DashboardPage() {
             }}>
               {plan}
             </Link>
-            <Link href="/dashboard/settings/billing" style={{ color: 'var(--text-secondary)', fontSize: '13px', textDecoration: 'none' }} className="hover:text-white transition-colors">
+            <Link href="/dashboard/billing" style={{ color: 'var(--text-secondary)', fontSize: '13px', textDecoration: 'none' }} className="hover:text-white transition-colors">
               Billing
             </Link>
             <SignOutButton />

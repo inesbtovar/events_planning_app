@@ -1,21 +1,21 @@
 // app/layout.tsx
 import type { Metadata } from 'next'
-import { Syne, DM_Sans } from 'next/font/google'
+import { Outfit, DM_Sans } from 'next/font/google'
 import { Toaster } from 'react-hot-toast'
 import './globals.css'
 import { SpeedInsights } from '@vercel/speed-insights/next'
 
-const syne = Syne({
+const outfit = Outfit({
   subsets: ['latin'],
   weight: ['400', '500', '600', '700', '800'],
-  variable: '--font-syne',
+  variable: '--font-display',
   display: 'swap',
 })
 
 const dmSans = DM_Sans({
   subsets: ['latin'],
   weight: ['300', '400', '500', '600'],
-  variable: '--font-dm',
+  variable: '--font-body',
   display: 'swap',
 })
 
@@ -26,7 +26,7 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className={`${syne.variable} ${dmSans.variable}`}>
+    <html lang="en" className={`${outfit.variable} ${dmSans.variable}`}>
       <body>
         {children}
         <SpeedInsights />
