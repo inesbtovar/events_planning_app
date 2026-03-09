@@ -1,12 +1,23 @@
 // app/layout.tsx
 import type { Metadata } from 'next'
-import { Geist } from 'next/font/google'
+import { Syne, DM_Sans } from 'next/font/google'
 import { Toaster } from 'react-hot-toast'
 import './globals.css'
+import { SpeedInsights } from '@vercel/speed-insights/next'
 
-import { SpeedInsights } from "@vercel/speed-insights/next"
+const syne = Syne({
+  subsets: ['latin'],
+  weight: ['400', '500', '600', '700', '800'],
+  variable: '--font-syne',
+  display: 'swap',
+})
 
-const geist = Geist({ subsets: ['latin'] })
+const dmSans = DM_Sans({
+  subsets: ['latin'],
+  weight: ['300', '400', '500', '600'],
+  variable: '--font-dm',
+  display: 'swap',
+})
 
 export const metadata: Metadata = {
   title: 'EventsDock — Event Planning Made Simple',
@@ -15,21 +26,23 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en">
-      <body className={geist.className}>
+    <html lang="en" className={`${syne.variable} ${dmSans.variable}`}>
+      <body>
         {children}
+        <SpeedInsights />
         <Toaster
           position="top-right"
           toastOptions={{
             style: {
-              background: '#1c1917',
-              color: '#e7e5e4',
-              border: '1px solid #292524',
+              background: '#112240',
+              color: '#E8F0FE',
+              border: '1px solid rgba(10,191,188,0.2)',
               borderRadius: '10px',
               fontSize: '14px',
+              fontFamily: 'var(--font-dm), sans-serif',
             },
-            success: { iconTheme: { primary: '#86efac', secondary: '#1c1917' } },
-            error: { iconTheme: { primary: '#fca5a5', secondary: '#1c1917' } },
+            success: { iconTheme: { primary: '#06D6A0', secondary: '#112240' } },
+            error: { iconTheme: { primary: '#fca5a5', secondary: '#112240' } },
           }}
         />
       </body>

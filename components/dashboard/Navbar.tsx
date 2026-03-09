@@ -10,7 +10,7 @@ type Props = {
   backHref?: string
   backLabel?: string
   title?: string
-  children?: React.ReactNode  // right side actions
+  children?: React.ReactNode
 }
 
 export default function Navbar({ email, backHref, backLabel, title, children }: Props) {
@@ -49,6 +49,12 @@ export default function Navbar({ email, backHref, backLabel, title, children }: 
           {email && (
             <>
               <span className="text-sm text-stone-400 hidden sm:block">{email}</span>
+              <Link
+                href="/dashboard/settings/billing"
+                className="text-sm text-stone-400 hover:text-stone-700 transition-colors"
+              >
+                Billing
+              </Link>
               <button
                 onClick={handleSignOut}
                 className="text-sm text-stone-400 hover:text-stone-700 transition-colors"

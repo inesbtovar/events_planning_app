@@ -2,9 +2,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { nanoid } from 'nanoid'
-import { canAddGuest } from '@/lib/plans'
+import { getLimits } from '@/lib/plans'
 
-// GET — list guests for an event
 export async function GET(request: NextRequest) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -17,12 +16,6 @@ export async function GET(request: NextRequest) {
     .from('events').select('id').eq('id', eventId).eq('user_id', user.id).single()
   if (!event) return NextResponse.json({ error: 'Event not found' }, { status: 404 })
 
-    // Check guest limit
-const { allowed, reason } = await canAddGuest(eventId)
-if (!allowed) {
-  return NextResponse.json({ error: reason, upgrade: true }, { status: 403 })
-}
-
   const { data, error } = await supabase
     .from('guests').select('*').eq('event_id', eventId).order('name')
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
@@ -30,7 +23,6 @@ if (!allowed) {
   return NextResponse.json({ guests: data })
 }
 
-// POST — add a single guest manually
 export async function POST(request: NextRequest) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -46,6 +38,30 @@ export async function POST(request: NextRequest) {
   const { data: event } = await supabase
     .from('events').select('id').eq('id', eventId).eq('user_id', user.id).single()
   if (!event) return NextResponse.json({ error: 'Event not found' }, { status: 404 })
+
+  // Get user's plan and enforce guest limit
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('plan')
+    .eq('id', user.id)
+    .single()
+
+  const plan = profile?.plan ?? 'free'
+  const limits = getLimits(plan)
+
+  if (limits.guests !== Infinity) {
+    const { count } = await supabase
+      .from('guests')
+      .select('id', { count: 'exact', head: true })
+      .eq('event_id', eventId)
+
+    if ((count ?? 0) >= limits.guests) {
+      return NextResponse.json(
+        { error: `Your ${plan} plan allows up to ${limits.guests} guests per event. Upgrade to add more.` },
+        { status: 403 }
+      )
+    }
+  }
 
   const { data, error } = await supabase
     .from('guests')
@@ -66,7 +82,6 @@ export async function POST(request: NextRequest) {
   return NextResponse.json({ guest: data }, { status: 201 })
 }
 
-// PATCH — edit a guest
 export async function PATCH(request: NextRequest) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -77,7 +92,6 @@ export async function PATCH(request: NextRequest) {
 
   if (!guestId) return NextResponse.json({ error: 'Missing guestId' }, { status: 400 })
 
-  // Verify ownership via event
   const { data: guest } = await supabase
     .from('guests')
     .select('id, event_id, events(user_id)')
@@ -105,7 +119,6 @@ export async function PATCH(request: NextRequest) {
   return NextResponse.json({ guest: data })
 }
 
-// DELETE — remove a guest
 export async function DELETE(request: NextRequest) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()

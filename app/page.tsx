@@ -1,213 +1,161 @@
+'use client'
 // app/page.tsx
 import Link from 'next/link'
 
+const features = [
+  {
+    stroke: 'var(--teal)',
+    icon: (
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--teal)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+        <polyline points="14 2 14 8 20 8"/>
+        <line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/>
+      </svg>
+    ),
+    tag: 'Excel & CSV',
+    title: 'Import your guest list',
+    desc: 'Upload Excel or CSV in seconds. We handle column mapping automatically.',
+  },
+  {
+    stroke: 'var(--green)',
+    icon: (
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--green)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+        <circle cx="12" cy="12" r="10"/>
+        <line x1="2" y1="12" x2="22" y2="12"/>
+        <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
+      </svg>
+    ),
+    tag: '3 templates',
+    title: 'A website for your event',
+    desc: 'Pick from beautiful templates and publish in minutes. Your guests will be impressed.',
+  },
+  {
+    stroke: 'var(--teal)',
+    icon: (
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--teal)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+        <polyline points="9 11 12 14 22 4"/>
+        <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>
+      </svg>
+    ),
+    tag: 'Zero friction',
+    title: 'One link per guest',
+    desc: 'Send via WhatsApp. Guests confirm with one tap — no account, no friction.',
+  },
+]
+
+const steps = [
+  { n: '01', label: 'Create your event', desc: 'Name, date, location' },
+  { n: '02', label: 'Upload guest list', desc: 'Excel or CSV file' },
+  { n: '03', label: 'Publish your site', desc: 'One click to go live' },
+  { n: '04', label: 'Track RSVPs live', desc: 'Real-time dashboard' },
+]
+
+const stats = [
+  { value: '2 min', label: 'to set up an event' },
+  { value: '1 link', label: 'per guest to RSVP' },
+  { value: '0 apps', label: 'guests need to install' },
+]
+
 export default function LandingPage() {
   return (
-    <div className="min-h-screen" style={{ background: '#FDFAF6', fontFamily: "'Georgia', serif" }}>
+    <div className="min-h-screen grid-bg" style={{ background: 'var(--navy)', position: 'relative', overflow: 'hidden' }}>
+
+      {/* Ambient glows */}
+      <div style={{ position: 'absolute', top: '-200px', left: '50%', transform: 'translateX(-50%)', width: '800px', height: '600px', background: 'radial-gradient(ellipse, rgba(10,191,188,0.1) 0%, transparent 70%)', pointerEvents: 'none', zIndex: 0 }} />
+      <div style={{ position: 'absolute', bottom: '100px', right: '-100px', width: '500px', height: '500px', background: 'radial-gradient(ellipse, rgba(6,214,160,0.06) 0%, transparent 70%)', pointerEvents: 'none', zIndex: 0 }} />
 
       {/* Nav */}
-      <nav style={{ borderBottom: '1px solid #EDE8E0' }} className="px-6 sm:px-12 py-5 flex items-center justify-between bg-white/80 backdrop-blur-sm sticky top-0 z-50">
-        <div className="flex items-center gap-2">
-          <div style={{ background: '#E8A87C', borderRadius: '10px' }} className="w-7 h-7 flex items-center justify-center">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-              <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
-              <line x1="16" y1="2" x2="16" y2="6"/>
-              <line x1="8" y1="2" x2="8" y2="6"/>
-              <line x1="3" y1="10" x2="21" y2="10"/>
+      <nav style={{ borderBottom: '1px solid var(--border-subtle)', backdropFilter: 'blur(20px)', background: 'rgba(11,22,40,0.85)', position: 'sticky', top: 0, zIndex: 50 }}
+        className="px-6 sm:px-12 py-4 flex items-center justify-between">
+        <div className="flex items-center gap-2.5">
+          <div style={{ background: 'linear-gradient(135deg, var(--teal), var(--green))', borderRadius: '10px', width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#0B1628" strokeWidth="2.5" strokeLinecap="round">
+              <rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
             </svg>
           </div>
-          <span style={{ color: '#2D2016', fontFamily: "'Georgia', serif", fontSize: '18px', fontWeight: '600' }}>
-            EventsDock
-          </span>
+          <span style={{ fontFamily: 'var(--font-display)', fontSize: '18px', fontWeight: '700', color: 'var(--text-primary)', letterSpacing: '-0.3px' }}>EventsDock</span>
         </div>
-        <div className="flex items-center gap-6">
-          <Link href="/login" style={{ color: '#7A6652', fontSize: '14px', fontFamily: 'system-ui, sans-serif' }} className="hover:opacity-70 transition-opacity">
-            Sign in
-          </Link>
-          <Link href="/register" style={{
-            background: '#2D2016',
-            color: 'white',
-            padding: '8px 20px',
-            borderRadius: '99px',
-            fontSize: '14px',
-            fontFamily: 'system-ui, sans-serif',
-            fontWeight: '500',
-          }} className="hover:opacity-80 transition-opacity">
-            Get started
+        <div className="flex items-center gap-1">
+          <Link href="/pricing" style={{ color: 'var(--text-secondary)', fontSize: '14px', padding: '8px 14px', borderRadius: '8px' }} className="hover:text-white transition-colors">Pricing</Link>
+          <Link href="/login" style={{ color: 'var(--text-secondary)', fontSize: '14px', padding: '8px 14px', borderRadius: '8px' }} className="hover:text-white transition-colors">Sign in</Link>
+          <Link href="/register" className="btn-primary" style={{ padding: '9px 18px', borderRadius: '8px', fontSize: '14px', marginLeft: '4px' }}>
+            Get started free
           </Link>
         </div>
       </nav>
 
       {/* Hero */}
-      <section className="max-w-5xl mx-auto px-6 pt-20 pb-16 text-center">
-        <div style={{
-          display: 'inline-block',
-          background: '#FDF0E6',
-          color: '#C47A3A',
-          border: '1px solid #F0D5B8',
-          borderRadius: '99px',
-          padding: '6px 16px',
-          fontSize: '13px',
-          fontFamily: 'system-ui, sans-serif',
-          marginBottom: '32px',
-        }}>
+      <section className="max-w-5xl mx-auto px-6 pt-28 pb-16 text-center" style={{ position: 'relative', zIndex: 1 }}>
+        <div className="animate-fade-up" style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', background: 'var(--teal-glow)', border: '1px solid var(--border)', borderRadius: '99px', padding: '5px 16px 5px 8px', fontSize: '13px', color: 'var(--teal)', marginBottom: '40px' }}>
+          <span style={{ background: 'var(--teal)', borderRadius: '99px', padding: '2px 8px', fontSize: '10px', fontWeight: '700', color: 'var(--navy)', letterSpacing: '0.05em' }}>NEW</span>
           Free during early access
         </div>
 
-        <h1 style={{
-          fontSize: 'clamp(40px, 7vw, 76px)',
-          fontWeight: '400',
-          color: '#2D2016',
-          lineHeight: '1.15',
-          letterSpacing: '-0.5px',
-          marginBottom: '24px',
-        }}>
-          Plan your event,<br />
-          <span style={{ color: '#C47A3A', fontStyle: 'italic' }}>beautifully.</span>
+        <h1 className="animate-fade-up-1" style={{ fontFamily: 'var(--font-display)', fontSize: 'clamp(44px, 7vw, 80px)', fontWeight: '800', lineHeight: '1.05', letterSpacing: '-2.5px', marginBottom: '28px' }}>
+          Events that leave<br />
+          <span className="gradient-text">a lasting impression.</span>
         </h1>
 
-        <p style={{
-          color: '#7A6652',
-          fontSize: '18px',
-          fontFamily: 'system-ui, sans-serif',
-          lineHeight: '1.7',
-          maxWidth: '520px',
-          margin: '0 auto 40px',
-          fontWeight: '400',
-        }}>
-          Upload your guest list, build a gorgeous event page, and let guests RSVP with a single link. No app downloads, no accounts needed for guests.
+        <p className="animate-fade-up-2" style={{ color: 'var(--text-secondary)', fontSize: '18px', fontWeight: '300', lineHeight: '1.7', maxWidth: '500px', margin: '0 auto 44px' }}>
+          Upload your guest list, build a stunning event page, and let guests RSVP with a single link. No friction for your guests — ever.
         </p>
 
-        <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
-          <Link href="/register" style={{
-            background: '#2D2016',
-            color: 'white',
-            padding: '14px 32px',
-            borderRadius: '99px',
-            fontSize: '15px',
-            fontFamily: 'system-ui, sans-serif',
-            fontWeight: '500',
-          }} className="hover:opacity-80 transition-opacity">
-            Create your first event →
+        <div className="animate-fade-up-3 flex flex-col sm:flex-row items-center justify-center gap-3">
+          <Link href="/register" className="btn-primary" style={{ padding: '14px 32px', borderRadius: '10px', fontSize: '15px', display: 'inline-flex', alignItems: 'center', gap: '8px' }}>
+            Create your first event
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
           </Link>
-          <Link href="/login" style={{
-            background: 'white',
-            color: '#7A6652',
-            padding: '14px 32px',
-            borderRadius: '99px',
-            fontSize: '15px',
-            fontFamily: 'system-ui, sans-serif',
-            border: '1px solid #EDE8E0',
-          }} className="hover:border-stone-400 transition-colors">
+          <Link href="/login" className="btn-ghost" style={{ padding: '14px 32px', borderRadius: '10px', fontSize: '15px' }}>
             Sign in
           </Link>
         </div>
       </section>
 
+      {/* Stats */}
+      <section className="max-w-5xl mx-auto px-6 pb-20" style={{ position: 'relative', zIndex: 1 }}>
+        <div className="grid grid-cols-3 gap-4 max-w-md mx-auto">
+          {stats.map((s, i) => (
+            <div key={s.label} className={`text-center animate-fade-up-${i + 2}`}>
+              <div style={{ fontFamily: 'var(--font-display)', fontSize: '28px', fontWeight: '800' }} className="gradient-text">{s.value}</div>
+              <div style={{ color: 'var(--text-muted)', fontSize: '12px', marginTop: '4px' }}>{s.label}</div>
+            </div>
+          ))}
+        </div>
+      </section>
+
       {/* Feature cards */}
-      <section className="max-w-5xl mx-auto px-6 pb-24">
-        <div className="grid sm:grid-cols-3 gap-5">
-          {[
-            {
-              icon: (
-                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#C47A3A" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-                  <polyline points="14 2 14 8 20 8"/>
-                  <line x1="16" y1="13" x2="8" y2="13"/>
-                  <line x1="16" y1="17" x2="8" y2="17"/>
-                  <polyline points="10 9 9 9 8 9"/>
-                </svg>
-              ),
-              title: 'Import your guest list',
-              desc: 'Upload your existing Excel or CSV file in seconds. We handle columns in English or Portuguese.',
-            },
-            {
-              icon: (
-                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#C47A3A" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                  <circle cx="12" cy="12" r="10"/>
-                  <line x1="2" y1="12" x2="22" y2="12"/>
-                  <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
-                </svg>
-              ),
-              title: 'A website for your event',
-              desc: 'Pick from beautiful templates and publish in minutes. Your guests will be impressed.',
-            },
-            {
-              icon: (
-                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#C47A3A" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                  <polyline points="9 11 12 14 22 4"/>
-                  <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>
-                </svg>
-              ),
-              title: 'One link per guest',
-              desc: 'Send via WhatsApp. Guests confirm with one tap — no account, no friction.',
-            },
-          ].map(f => (
-            <div key={f.title} style={{
-              background: 'white',
-              border: '1px solid #EDE8E0',
-              borderRadius: '20px',
-              padding: '28px',
-            }}>
-              <div style={{
-                background: '#FDF0E6',
-                borderRadius: '12px',
-                width: '48px',
-                height: '48px',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                marginBottom: '16px',
-              }}>
+      <section className="max-w-5xl mx-auto px-6 pb-28" style={{ position: 'relative', zIndex: 1 }}>
+        <div className="grid sm:grid-cols-3 gap-4">
+          {features.map((f) => (
+            <div key={f.title} className="glass card-hover" style={{ borderRadius: '16px', padding: '28px' }}>
+              <div style={{ background: 'var(--teal-glow)', borderRadius: '12px', width: '48px', height: '48px', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '20px' }}>
                 {f.icon}
               </div>
-              <h3 style={{ color: '#2D2016', fontWeight: '600', fontSize: '16px', marginBottom: '8px', fontFamily: 'system-ui, sans-serif' }}>
-                {f.title}
-              </h3>
-              <p style={{ color: '#7A6652', fontSize: '14px', lineHeight: '1.6', fontFamily: 'system-ui, sans-serif' }}>
-                {f.desc}
-              </p>
+              <div style={{ display: 'inline-block', background: 'rgba(10,191,188,0.08)', border: '1px solid var(--border)', borderRadius: '99px', padding: '2px 10px', fontSize: '11px', color: 'var(--teal)', fontWeight: '600', marginBottom: '12px', letterSpacing: '0.03em' }}>
+                {f.tag}
+              </div>
+              <h3 style={{ fontFamily: 'var(--font-display)', fontWeight: '700', fontSize: '16px', color: 'var(--text-primary)', marginBottom: '8px' }}>{f.title}</h3>
+              <p style={{ color: 'var(--text-secondary)', fontSize: '14px', lineHeight: '1.6', fontWeight: '300' }}>{f.desc}</p>
             </div>
           ))}
         </div>
       </section>
 
       {/* Steps */}
-      <section style={{ background: '#2D2016' }} className="py-24 px-6">
-        <div className="max-w-3xl mx-auto text-center">
-          <h2 style={{ color: '#FDF8F2', fontSize: '32px', fontWeight: '400', marginBottom: '16px' }}>
+      <section style={{ borderTop: '1px solid var(--border-subtle)', borderBottom: '1px solid var(--border-subtle)', background: 'rgba(17,34,64,0.5)', position: 'relative', zIndex: 1 }} className="py-24 px-6">
+        <div className="max-w-4xl mx-auto text-center">
+          <h2 style={{ fontFamily: 'var(--font-display)', color: 'var(--text-primary)', fontSize: 'clamp(28px, 4vw, 40px)', fontWeight: '800', letterSpacing: '-1px', marginBottom: '12px' }}>
             Up and running in minutes
           </h2>
-          <p style={{ color: '#A08060', fontSize: '15px', fontFamily: 'system-ui, sans-serif', marginBottom: '48px' }}>
+          <p style={{ color: 'var(--text-secondary)', fontSize: '15px', fontWeight: '300', marginBottom: '56px' }}>
             No learning curve. Just fill in the details and go.
           </p>
-          <div className="grid sm:grid-cols-4 gap-6">
-            {[
-              { n: '1', label: 'Create your event' },
-              { n: '2', label: 'Upload guest list' },
-              { n: '3', label: 'Publish your site' },
-              { n: '4', label: 'Track RSVPs live' },
-            ].map(s => (
-              <div key={s.n}>
-                <div style={{
-                  width: '40px',
-                  height: '40px',
-                  borderRadius: '99px',
-                  background: '#E8A87C',
-                  color: '#2D2016',
-                  fontSize: '15px',
-                  fontWeight: '700',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  margin: '0 auto 12px',
-                  fontFamily: 'system-ui, sans-serif',
-                }}>
-                  {s.n}
-                </div>
-                <p style={{ color: '#C8A882', fontSize: '14px', fontFamily: 'system-ui, sans-serif' }}>
-                  {s.label}
-                </p>
+          <div className="grid sm:grid-cols-4 gap-8">
+            {steps.map((s) => (
+              <div key={s.n} className="text-center">
+                <div style={{ fontFamily: 'var(--font-display)', fontSize: '11px', fontWeight: '700', color: 'var(--teal)', letterSpacing: '2px', marginBottom: '16px' }}>{s.n}</div>
+                <p style={{ color: 'var(--text-primary)', fontSize: '14px', fontFamily: 'var(--font-display)', fontWeight: '600', marginBottom: '6px' }}>{s.label}</p>
+                <p style={{ color: 'var(--text-muted)', fontSize: '12px' }}>{s.desc}</p>
               </div>
             ))}
           </div>
@@ -215,34 +163,39 @@ export default function LandingPage() {
       </section>
 
       {/* CTA */}
-      <section className="text-center py-24 px-6" style={{ background: '#FDFAF6' }}>
-        <h2 style={{ fontSize: '32px', fontWeight: '400', color: '#2D2016', marginBottom: '12px' }}>
-          Ready to plan something special?
+      <section className="text-center py-28 px-6" style={{ position: 'relative', zIndex: 1 }}>
+        <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%,-50%)', width: '600px', height: '300px', background: 'radial-gradient(ellipse, rgba(10,191,188,0.08) 0%, transparent 70%)', pointerEvents: 'none' }} />
+        <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 'clamp(32px, 5vw, 52px)', fontWeight: '800', letterSpacing: '-1.5px', color: 'var(--text-primary)', marginBottom: '12px' }}>
+          Ready to plan something<br />
+          <span className="gradient-text">unforgettable?</span>
         </h2>
-        <p style={{ color: '#7A6652', fontSize: '15px', fontFamily: 'system-ui, sans-serif', marginBottom: '32px' }}>
+        <p style={{ color: 'var(--text-secondary)', fontSize: '15px', fontWeight: '300', marginBottom: '36px' }}>
           Free to use. No credit card required.
         </p>
-        <Link href="/register" style={{
-          background: '#2D2016',
-          color: 'white',
-          padding: '14px 36px',
-          borderRadius: '99px',
-          fontSize: '15px',
-          fontFamily: 'system-ui, sans-serif',
-          fontWeight: '500',
-          display: 'inline-block',
-        }} className="hover:opacity-80 transition-opacity">
-          Create your event free →
+        <Link href="/register" className="btn-primary" style={{ padding: '16px 40px', borderRadius: '10px', fontSize: '16px', display: 'inline-flex', alignItems: 'center', gap: '10px' }}>
+          Create your event free
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
         </Link>
       </section>
 
       {/* Footer */}
-      <footer style={{ borderTop: '1px solid #EDE8E0', background: 'white' }} className="py-8 text-center">
-        <p style={{ color: '#B0A090', fontSize: '13px', fontFamily: 'system-ui, sans-serif' }}>
-          © {new Date().getFullYear()} EventsDock. Made with care for weddings, birthdays & everything in between.
-        </p>
+      <footer style={{ borderTop: '1px solid var(--border-subtle)', position: 'relative', zIndex: 1 }} className="py-8 px-6">
+        <div className="max-w-5xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
+          <div className="flex items-center gap-2">
+            <div style={{ background: 'linear-gradient(135deg, var(--teal), var(--green))', borderRadius: '7px', width: '24px', height: '24px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#0B1628" strokeWidth="2.5" strokeLinecap="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+            </div>
+            <span style={{ fontFamily: 'var(--font-display)', fontSize: '14px', fontWeight: '700', color: 'var(--text-secondary)' }}>EventsDock</span>
+          </div>
+          <p style={{ color: 'var(--text-muted)', fontSize: '13px' }}>
+            © {new Date().getFullYear()} EventsDock. Made for weddings, birthdays & everything in between.
+          </p>
+          <div className="flex items-center gap-6">
+            <Link href="/pricing" style={{ color: 'var(--text-muted)', fontSize: '13px' }} className="hover:text-white transition-colors">Pricing</Link>
+            <Link href="/login" style={{ color: 'var(--text-muted)', fontSize: '13px' }} className="hover:text-white transition-colors">Sign in</Link>
+          </div>
+        </div>
       </footer>
-
     </div>
   )
 }
