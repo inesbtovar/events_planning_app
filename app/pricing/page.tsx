@@ -68,8 +68,8 @@ export default function PricingPage() {
       } else {
         setDiscountResult({ valid: false, percent: 0, message: data.error || 'Invalid code' })
       }
-    } catch {
-      setDiscountResult({ valid: false, percent: 0, message: 'Something went wrong' })
+    } catch (err) {
+      setDiscountResult({ valid: false, percent: 0, message: 'Could not reach server. Try again.' })
     } finally {
       setDiscountLoading(false)
     }
