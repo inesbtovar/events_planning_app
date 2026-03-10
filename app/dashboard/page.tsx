@@ -3,10 +3,10 @@ import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import DashboardNav from '@/components/dashboard/DashboardNav'
-t
+
 export default async function DashboardPage() {
   const supabase = await createClient()
-  cons { data: { user } } = await supabase.auth.getUser()
+  const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
   const { data: events } = await supabase
