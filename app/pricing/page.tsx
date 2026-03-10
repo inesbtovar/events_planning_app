@@ -7,302 +7,257 @@ import { createClient } from '@/lib/supabase/client'
 
 const PLANS = [
   {
-    id: 'free',
-    label: 'Free',
-    price: '€0',
+    id: 'free', label: 'Free', price: 0, priceLabel: '€0',
     description: 'Perfect for one-off events',
     features: ['1 active event', 'Up to 50 guests', 'RSVP tracking', 'Public event page', 'Email invitations'],
-    cta: 'Get started free',
-    ctaLoggedIn: 'Your current plan',
     highlighted: false,
-    registerHref: '/register',
   },
   {
-    id: 'starter',
-    label: 'Starter',
-    price: '€9',
+    id: 'starter', label: 'Starter', price: 9, priceLabel: '€9',
     description: 'For growing event planners',
     features: ['5 active events', 'Up to 200 guests', 'RSVP tracking', 'Custom event pages', 'Email invitations', 'Guest import (CSV/Excel)', 'Analytics dashboard'],
-    cta: 'Start with Starter',
-    ctaLoggedIn: 'Upgrade to Starter',
     highlighted: true,
-    registerHref: '/register?plan=starter',
   },
   {
-    id: 'pro',
-    label: 'Pro',
-    price: '€19',
+    id: 'pro', label: 'Pro', price: 19, priceLabel: '€19',
     description: 'For professional planners',
     features: ['Unlimited events', 'Unlimited guests', 'RSVP tracking', 'Custom event pages', 'Email invitations', 'Guest import (CSV/Excel)', 'Analytics dashboard', 'Priority support', 'Custom branding'],
-    cta: 'Start with Pro',
-    ctaLoggedIn: 'Upgrade to Pro',
     highlighted: false,
-    registerHref: '/register?plan=pro',
   },
 ]
 
-const CHECK = (
-  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#E8A87C" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-    <polyline points="20 6 9 17 4 12"/>
-  </svg>
+const Check = () => (
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--teal)" strokeWidth="2.5" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg>
 )
 
 export default function PricingPage() {
   const router = useRouter()
   const [user, setUser] = useState<{ id: string; email?: string } | null>(null)
-  const [currentPlan, setCurrentPlan] = useState<string>('free')
+  const [currentPlan, setCurrentPlan] = useState('free')
   const [loadingPlan, setLoadingPlan] = useState<string | null>(null)
   const [authLoading, setAuthLoading] = useState(true)
+  const [discountCode, setDiscountCode] = useState('')
+  const [discountResult, setDiscountResult] = useState<{ valid: boolean; percent: number; message: string } | null>(null)
+  const [discountLoading, setDiscountLoading] = useState(false)
 
   useEffect(() => {
     const supabase = createClient()
-
-    supabase.auth.getUser().then(({ data: { user } }) => {
+    supabase.auth.getUser().then(async ({ data: { user } }) => {
       setUser(user)
       if (user) {
-        supabase
-          .from('profiles')
-          .select('plan')
-          .eq('id', user.id)
-          .single()
-          .then(({ data }) => {
-            if (data?.plan) setCurrentPlan(data.plan)
-          })
+        const { data } = await supabase.from('profiles').select('plan').eq('id', user.id).single()
+        if (data?.plan) setCurrentPlan(data.plan)
       }
       setAuthLoading(false)
     })
   }, [])
 
+  async function applyDiscount() {
+    if (!discountCode.trim()) return
+    setDiscountLoading(true)
+    setDiscountResult(null)
+    try {
+      const res = await fetch('/api/discount/validate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code: discountCode.trim().toUpperCase() }),
+      })
+      const data = await res.json()
+      if (data.valid) {
+        setDiscountResult({ valid: true, percent: data.percent, message: `${data.percent}% off applied!` })
+      } else {
+        setDiscountResult({ valid: false, percent: 0, message: data.error || 'Invalid code' })
+      }
+    } catch {
+      setDiscountResult({ valid: false, percent: 0, message: 'Something went wrong' })
+    } finally {
+      setDiscountLoading(false)
+    }
+  }
+
+  function discountedPrice(plan: typeof PLANS[0]) {
+    if (!discountResult?.valid || plan.price === 0) return null
+    const d = plan.price * (1 - discountResult.percent / 100)
+    return `€${d % 1 === 0 ? d : d.toFixed(2)}`
+  }
+
   async function handlePlanClick(planId: string) {
     if (planId === 'free') return
-
-    if (!user) {
-      router.push(`/register?plan=${planId}`)
-      return
-    }
-
+    if (!user) { router.push(`/register?plan=${planId}`); return }
     if (planId === currentPlan) return
-
     setLoadingPlan(planId)
     try {
       const res = await fetch('/api/stripe/checkout', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ plan: planId }),
+        body: JSON.stringify({ plan: planId, discountCode: discountResult?.valid ? discountCode.trim().toUpperCase() : undefined }),
       })
       const data = await res.json()
-      if (data.url) {
-        window.location.href = data.url
-      } else {
-        alert('Something went wrong. Please try again.')
-      }
-    } catch {
-      alert('Something went wrong. Please try again.')
-    } finally {
-      setLoadingPlan(null)
-    }
+      if (data.url) window.location.href = data.url
+      else alert('Something went wrong. Please try again.')
+    } catch { alert('Something went wrong.') }
+    finally { setLoadingPlan(null) }
   }
 
-  function getButtonLabel(plan: typeof PLANS[0]) {
-    if (authLoading) return '...'
-    if (!user) return plan.cta
-    if (plan.id === currentPlan) return '✓ Current plan'
-    if (plan.id === 'free') return '✓ Included'
-    return plan.ctaLoggedIn
-  }
-
-  function isCurrentPlan(planId: string) {
-    return !!user && planId === currentPlan
-  }
-
-  function isDisabled(plan: typeof PLANS[0]) {
-    if (authLoading || loadingPlan === plan.id) return true
-    if (!user) return false
-    if (plan.id === currentPlan) return true
-    if (plan.id === 'free') return true
-    return false
-  }
+  const isCurrent = (id: string) => !!user && id === currentPlan
+  const isDisabled = (plan: typeof PLANS[0]) => authLoading || !!loadingPlan || isCurrent(plan.id) || plan.id === 'free'
 
   return (
-    <div className="min-h-screen" style={{ background: '#FDFAF6', fontFamily: "'Georgia', serif" }}>
+    <div className="min-h-screen grid-bg" style={{ background: 'var(--navy)', position: 'relative', overflow: 'hidden' }}>
+      <div style={{ position: 'absolute', top: '-100px', left: '50%', transform: 'translateX(-50%)', width: '700px', height: '500px', background: 'radial-gradient(ellipse, rgba(10,191,188,0.09) 0%, transparent 70%)', pointerEvents: 'none' }} />
 
       {/* Nav */}
-      <nav style={{ borderBottom: '1px solid #EDE8E0' }} className="px-6 sm:px-12 py-5 flex items-center justify-between bg-white/80 backdrop-blur-sm sticky top-0 z-50">
-        <Link href="/" className="flex items-center gap-2">
-          <div style={{ background: '#E8A87C', borderRadius: '10px' }} className="w-7 h-7 flex items-center justify-center">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-              <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
-              <line x1="16" y1="2" x2="16" y2="6"/>
-              <line x1="8" y1="2" x2="8" y2="6"/>
-              <line x1="3" y1="10" x2="21" y2="10"/>
-            </svg>
+      <nav style={{ borderBottom: '1px solid var(--border-subtle)', backdropFilter: 'blur(20px)', background: 'rgba(11,22,40,0.85)', position: 'sticky', top: 0, zIndex: 50 }}
+        className="px-6 sm:px-12 py-4 flex items-center justify-between">
+        <Link href="/" style={{ display: 'flex', alignItems: 'center', gap: '10px', textDecoration: 'none' }}>
+          <div style={{ background: 'linear-gradient(135deg, var(--teal), var(--green))', borderRadius: '10px', width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#0B1628" strokeWidth="2.5" strokeLinecap="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
           </div>
-          <span style={{ color: '#2D2016', fontSize: '18px', fontWeight: '600' }}>EventsDock</span>
+          <span style={{ fontFamily: 'var(--font-display)', fontSize: '18px', fontWeight: '700', color: 'var(--text-primary)' }}>EventsDock</span>
         </Link>
-        <div className="flex items-center gap-6">
-          {!authLoading && (
-            user ? (
-              <Link href="/dashboard" style={{ color: '#7A6652', fontSize: '14px', fontFamily: 'system-ui, sans-serif' }} className="hover:opacity-70 transition-opacity">
-                Dashboard →
-              </Link>
-            ) : (
-              <>
-                <Link href="/login" style={{ color: '#7A6652', fontSize: '14px', fontFamily: 'system-ui, sans-serif' }} className="hover:opacity-70 transition-opacity">
-                  Sign in
-                </Link>
-                <Link href="/register" style={{
-                  background: '#2D2016', color: 'white',
-                  padding: '8px 20px', borderRadius: '8px',
-                  fontSize: '14px', fontFamily: 'system-ui, sans-serif', fontWeight: '500',
-                }} className="hover:opacity-80 transition-opacity">
-                  Get started
-                </Link>
-              </>
-            )
-          )}
+        <div className="flex items-center gap-2">
+          {!authLoading && (user ? (
+            <Link href="/dashboard" className="btn-ghost" style={{ padding: '8px 16px', borderRadius: '8px', fontSize: '14px' }}>Dashboard →</Link>
+          ) : (
+            <>
+              <Link href="/login" style={{ color: 'var(--text-secondary)', fontSize: '14px', padding: '8px 14px' }} className="hover:text-white transition-colors">Sign in</Link>
+              <Link href="/register" className="btn-primary" style={{ padding: '9px 18px', borderRadius: '8px', fontSize: '14px' }}>Get started</Link>
+            </>
+          ))}
         </div>
       </nav>
 
       {/* Header */}
-      <div className="text-center px-6 pt-16 pb-12">
-        <h1 style={{ color: '#2D2016', fontSize: '42px', fontWeight: '700', letterSpacing: '-0.5px' }}>
+      <div className="text-center px-6 pt-20 pb-12" style={{ position: 'relative', zIndex: 1 }}>
+        <h1 className="animate-fade-up" style={{ fontFamily: 'var(--font-display)', color: 'var(--text-primary)', fontSize: 'clamp(36px, 5vw, 54px)', fontWeight: '700', letterSpacing: '-1.5px', marginBottom: '12px' }}>
           Simple, honest pricing
         </h1>
-        <p style={{ color: '#7A6652', fontSize: '18px', marginTop: '12px', fontFamily: 'system-ui, sans-serif' }}>
-          {authLoading ? '' : user ? 'Upgrade your plan anytime — no hassle.' : 'Start free, upgrade when you need more.'}
+        <p className="animate-fade-up-1" style={{ color: 'var(--text-secondary)', fontSize: '17px', fontWeight: '300', marginBottom: '32px' }}>
+          {authLoading ? '\u00A0' : user ? 'Upgrade your plan anytime.' : 'Start free, upgrade when you need more.'}
         </p>
+
+        {/* Discount code */}
+        <div className="animate-fade-up-2" style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', justifyContent: 'center' }}>
+          <input
+            type="text"
+            value={discountCode}
+            onChange={e => { setDiscountCode(e.target.value.toUpperCase()); setDiscountResult(null) }}
+            onKeyDown={e => e.key === 'Enter' && applyDiscount()}
+            placeholder="HAVE A CODE?"
+            className="input-dark"
+            style={{ width: '180px', borderRadius: '9px', padding: '10px 14px', fontSize: '13px', fontWeight: '600', letterSpacing: '0.06em' }}
+          />
+          <button
+            onClick={applyDiscount}
+            disabled={discountLoading || !discountCode.trim()}
+            className="btn-ghost"
+            style={{ padding: '10px 18px', borderRadius: '9px', fontSize: '13px', opacity: !discountCode.trim() ? 0.4 : 1 }}
+          >
+            {discountLoading ? '...' : 'Apply'}
+          </button>
+          {discountResult && (
+            <span style={{
+              fontSize: '13px', fontWeight: '600', padding: '6px 14px', borderRadius: '99px',
+              background: discountResult.valid ? 'rgba(6,214,160,0.12)' : 'rgba(239,68,68,0.1)',
+              border: `1px solid ${discountResult.valid ? 'rgba(6,214,160,0.3)' : 'rgba(239,68,68,0.3)'}`,
+              color: discountResult.valid ? 'var(--green)' : '#f87171',
+            }}>
+              {discountResult.valid ? `✓ ${discountResult.message}` : `✗ ${discountResult.message}`}
+            </span>
+          )}
+        </div>
       </div>
 
-      {/* Pricing Cards */}
-      <div className="max-w-5xl mx-auto px-6 pb-20">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {PLANS.map((plan) => (
-            <div
-              key={plan.id}
-              style={{
-                background: plan.highlighted ? '#2D2016' : 'white',
-                border: `1px solid ${isCurrentPlan(plan.id) ? '#4CAF50' : plan.highlighted ? '#2D2016' : '#EDE8E0'}`,
-                borderRadius: '16px',
-                padding: '32px',
-                position: 'relative',
-                boxShadow: isCurrentPlan(plan.id) ? '0 0 0 2px #4CAF5033' : 'none',
-              }}
-            >
-              {plan.highlighted && !isCurrentPlan(plan.id) && (
-                <div style={{
-                  position: 'absolute', top: '-12px', left: '50%', transform: 'translateX(-50%)',
-                  background: '#E8A87C', color: 'white', fontSize: '11px',
-                  fontFamily: 'system-ui, sans-serif', fontWeight: '600',
-                  padding: '4px 12px', borderRadius: '99px',
-                  textTransform: 'uppercase', letterSpacing: '0.05em',
-                  whiteSpace: 'nowrap',
-                }}>
-                  Most popular
-                </div>
-              )}
+      {/* Cards */}
+      <div className="max-w-5xl mx-auto px-6 pb-20" style={{ position: 'relative', zIndex: 1 }}>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+          {PLANS.map((plan, i) => {
+            const dp = discountedPrice(plan)
+            const current = isCurrent(plan.id)
+            return (
+              <div key={plan.id} className={`glass animate-fade-up-${i + 1}`} style={{
+                borderRadius: '18px', padding: '32px', position: 'relative',
+                border: current ? '1px solid rgba(6,214,160,0.4)' : plan.highlighted ? '1px solid rgba(10,191,188,0.35)' : undefined,
+                background: plan.highlighted ? 'rgba(10,191,188,0.06)' : undefined,
+              }}>
+                {plan.highlighted && !current && (
+                  <div style={{ position: 'absolute', top: '-12px', left: '50%', transform: 'translateX(-50%)', background: 'linear-gradient(135deg, var(--teal), var(--green))', color: 'var(--navy)', fontSize: '10px', fontWeight: '800', padding: '4px 14px', borderRadius: '99px', textTransform: 'uppercase', letterSpacing: '0.1em', whiteSpace: 'nowrap' }}>
+                    Most popular
+                  </div>
+                )}
+                {current && (
+                  <div style={{ position: 'absolute', top: '-12px', left: '50%', transform: 'translateX(-50%)', background: 'var(--green)', color: 'var(--navy)', fontSize: '10px', fontWeight: '800', padding: '4px 14px', borderRadius: '99px', textTransform: 'uppercase', letterSpacing: '0.1em', whiteSpace: 'nowrap' }}>
+                    ✓ Your plan
+                  </div>
+                )}
 
-              {isCurrentPlan(plan.id) && (
-                <div style={{
-                  position: 'absolute', top: '-12px', left: '50%', transform: 'translateX(-50%)',
-                  background: '#4CAF50', color: 'white', fontSize: '11px',
-                  fontFamily: 'system-ui, sans-serif', fontWeight: '600',
-                  padding: '4px 14px', borderRadius: '99px',
-                  textTransform: 'uppercase', letterSpacing: '0.05em',
-                  whiteSpace: 'nowrap',
-                }}>
-                  ✓ Your plan
-                </div>
-              )}
+                <p style={{ color: 'var(--text-muted)', fontSize: '11px', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '10px' }}>{plan.label}</p>
 
-              <div style={{ marginBottom: '24px' }}>
-                <p style={{
-                  color: plan.highlighted ? '#C4A882' : '#7A6652',
-                  fontSize: '13px', fontFamily: 'system-ui, sans-serif',
-                  fontWeight: '500', textTransform: 'uppercase', letterSpacing: '0.05em',
-                }}>
-                  {plan.label}
-                </p>
-                <div className="flex items-end gap-1 mt-2">
-                  <span style={{ color: plan.highlighted ? 'white' : '#2D2016', fontSize: '40px', fontWeight: '700' }}>
-                    {plan.price}
-                  </span>
-                  <span style={{ color: plan.highlighted ? '#C4A882' : '#7A6652', fontSize: '14px', fontFamily: 'system-ui, sans-serif', marginBottom: '8px' }}>
-                    /month
-                  </span>
+                <div style={{ display: 'flex', alignItems: 'flex-end', gap: '6px', marginBottom: '6px' }}>
+                  {dp ? (
+                    <>
+                      <span style={{ fontFamily: 'var(--font-display)', fontSize: '44px', fontWeight: '800', color: 'var(--text-primary)', lineHeight: 1 }}>{dp}</span>
+                      <span style={{ color: 'var(--text-muted)', fontSize: '18px', fontWeight: '500', textDecoration: 'line-through', marginBottom: '5px' }}>{plan.priceLabel}</span>
+                    </>
+                  ) : (
+                    <span style={{ fontFamily: 'var(--font-display)', fontSize: '44px', fontWeight: '800', color: 'var(--text-primary)', lineHeight: 1 }}>{plan.priceLabel}</span>
+                  )}
+                  <span style={{ color: 'var(--text-muted)', fontSize: '13px', marginBottom: '7px' }}>/mo</span>
                 </div>
-                <p style={{ color: plan.highlighted ? '#C4A882' : '#7A6652', fontSize: '14px', fontFamily: 'system-ui, sans-serif', marginTop: '8px' }}>
-                  {plan.description}
-                </p>
+
+                <p style={{ color: 'var(--text-secondary)', fontSize: '13px', fontWeight: '300', marginBottom: '24px' }}>{plan.description}</p>
+
+                <ul style={{ listStyle: 'none', padding: 0, margin: '0 0 28px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                  {plan.features.map(f => (
+                    <li key={f} style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '13px', color: 'var(--text-secondary)', fontWeight: '300' }}>
+                      <Check />{f}
+                    </li>
+                  ))}
+                </ul>
+
+                <button
+                  onClick={() => handlePlanClick(plan.id)}
+                  disabled={isDisabled(plan)}
+                  style={{
+                    display: 'block', width: '100%', padding: '12px', borderRadius: '10px',
+                    fontSize: '14px', fontWeight: '600', cursor: isDisabled(plan) ? 'default' : 'pointer',
+                    transition: 'all 0.2s', textAlign: 'center',
+                    ...(current
+                      ? { background: 'rgba(6,214,160,0.1)', color: 'var(--green)', border: '1px solid rgba(6,214,160,0.3)' }
+                      : plan.highlighted
+                      ? { background: 'linear-gradient(135deg, var(--teal), var(--green))', color: 'var(--navy)', border: 'none', opacity: isDisabled(plan) ? 0.5 : 1 }
+                      : { background: 'transparent', color: 'var(--text-secondary)', border: '1px solid var(--border)', opacity: isDisabled(plan) ? 0.4 : 1 }
+                    ),
+                  }}
+                >
+                  {loadingPlan === plan.id ? 'Redirecting...' :
+                   current ? '✓ Current plan' :
+                   plan.id === 'free' ? (user ? '✓ Included' : 'Get started free') :
+                   !user ? `Start with ${plan.label}` : `Upgrade to ${plan.label}`}
+                </button>
               </div>
-
-              <ul style={{ listStyle: 'none', padding: 0, margin: '0 0 28px 0' }} className="space-y-3">
-                {plan.features.map((feature) => (
-                  <li key={feature} className="flex items-center gap-2" style={{
-                    fontFamily: 'system-ui, sans-serif', fontSize: '14px',
-                    color: plan.highlighted ? '#F5EDE0' : '#4A3728',
-                  }}>
-                    {CHECK}
-                    {feature}
-                  </li>
-                ))}
-              </ul>
-
-              <button
-                onClick={() => handlePlanClick(plan.id)}
-                disabled={isDisabled(plan)}
-                style={{
-                  display: 'block',
-                  width: '100%',
-                  textAlign: 'center',
-                  padding: '11px',
-                  borderRadius: '9px',
-                  fontSize: '14px',
-                  fontFamily: 'system-ui, sans-serif',
-                  fontWeight: '500',
-                  cursor: isDisabled(plan) ? 'default' : 'pointer',
-                  transition: 'opacity 0.15s',
-                  opacity: isDisabled(plan) && !loadingPlan ? 0.6 : 1,
-                  ...(plan.highlighted
-                    ? {
-                        background: isCurrentPlan(plan.id) ? '#4a7c4a' : '#E8A87C',
-                        color: 'white',
-                        border: 'none',
-                      }
-                    : {
-                        background: isCurrentPlan(plan.id) ? '#f5f5f5' : 'transparent',
-                        color: isCurrentPlan(plan.id) ? '#4CAF50' : '#2D2016',
-                        border: `1.5px solid ${isCurrentPlan(plan.id) ? '#4CAF50' : '#2D2016'}`,
-                      }
-                  ),
-                }}
-              >
-                {loadingPlan === plan.id ? 'Redirecting to checkout...' : getButtonLabel(plan)}
-              </button>
-            </div>
-          ))}
+            )
+          })}
         </div>
       </div>
 
       {/* FAQ */}
-      <div className="max-w-2xl mx-auto px-6 pb-24">
-        <h2 style={{ color: '#2D2016', fontSize: '26px', fontWeight: '700', textAlign: 'center', marginBottom: '32px' }}>
+      <div className="max-w-2xl mx-auto px-6 pb-24" style={{ position: 'relative', zIndex: 1 }}>
+        <h2 style={{ fontFamily: 'var(--font-display)', color: 'var(--text-primary)', fontSize: '26px', fontWeight: '700', textAlign: 'center', letterSpacing: '-0.5px', marginBottom: '36px' }}>
           Frequently asked questions
         </h2>
-        <div className="space-y-6">
-          {[
-            { q: 'Can I switch plans later?', a: 'Yes, you can upgrade or downgrade your plan at any time. Changes take effect at the start of your next billing cycle.' },
-            { q: 'Do you offer refunds?', a: 'We offer a 14-day money-back guarantee on all paid plans. No questions asked.' },
-            { q: 'What payment methods do you accept?', a: 'We accept all major credit and debit cards via Stripe. Your payment info is never stored on our servers.' },
-            { q: 'Is there a free trial for paid plans?', a: 'The Free plan lets you explore EventsDock with no time limit. Paid plans include a 14-day refund window.' },
-          ].map(({ q, a }) => (
-            <div key={q} style={{ borderBottom: '1px solid #EDE8E0', paddingBottom: '20px' }}>
-              <p style={{ color: '#2D2016', fontWeight: '600', fontSize: '15px', marginBottom: '6px' }}>{q}</p>
-              <p style={{ color: '#7A6652', fontSize: '14px', fontFamily: 'system-ui, sans-serif', lineHeight: '1.6' }}>{a}</p>
-            </div>
-          ))}
-        </div>
+        {[
+          { q: 'Can I switch plans later?', a: 'Yes, upgrade or downgrade at any time. Changes take effect immediately.' },
+          { q: 'Do you offer refunds?', a: '14-day money-back guarantee on all paid plans. No questions asked.' },
+          { q: 'What payment methods do you accept?', a: 'All major credit and debit cards via Stripe. Your payment info is never stored on our servers.' },
+          { q: 'How do discount codes work?', a: 'Enter your code above to apply a percentage off your monthly price. The discount is applied at checkout.' },
+        ].map(({ q, a }) => (
+          <div key={q} style={{ borderBottom: '1px solid var(--border-subtle)', padding: '20px 0' }}>
+            <p style={{ fontFamily: 'var(--font-display)', color: 'var(--text-primary)', fontWeight: '600', fontSize: '15px', marginBottom: '8px' }}>{q}</p>
+            <p style={{ color: 'var(--text-secondary)', fontSize: '14px', lineHeight: '1.6', fontWeight: '300' }}>{a}</p>
+          </div>
+        ))}
       </div>
-
     </div>
   )
 }
