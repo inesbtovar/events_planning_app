@@ -1,263 +1,201 @@
 'use client'
-// app/pricing/page.tsx
-import { useState, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
+// app/page.tsx
 import Link from 'next/link'
-import { createClient } from '@/lib/supabase/client'
 
-const PLANS = [
+const features = [
   {
-    id: 'free', label: 'Free', price: 0, priceLabel: '€0',
-    description: 'Perfect for one-off events',
-    features: ['1 active event', 'Up to 50 guests', 'RSVP tracking', 'Public event page', 'Email invitations'],
-    highlighted: false,
+    stroke: 'var(--teal)',
+    icon: (
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--teal)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+        <polyline points="14 2 14 8 20 8"/>
+        <line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/>
+      </svg>
+    ),
+    tag: 'Excel & CSV',
+    title: 'Import your guest list',
+    desc: 'Upload Excel or CSV in seconds. We handle column mapping automatically.',
   },
   {
-    id: 'starter', label: 'Starter', price: 9, priceLabel: '€9',
-    description: 'For growing event planners',
-    features: ['5 active events', 'Up to 200 guests', 'RSVP tracking', 'Custom event pages', 'Email invitations', 'Guest import (CSV/Excel)', 'Analytics dashboard'],
-    highlighted: true,
+    stroke: 'var(--green)',
+    icon: (
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--green)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+        <circle cx="12" cy="12" r="10"/>
+        <line x1="2" y1="12" x2="22" y2="12"/>
+        <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
+      </svg>
+    ),
+    tag: '3 templates',
+    title: 'A website for your event',
+    desc: 'Pick from beautiful templates and publish in minutes. Your guests will be impressed.',
   },
   {
-    id: 'pro', label: 'Pro', price: 19, priceLabel: '€19',
-    description: 'For professional planners',
-    features: ['Unlimited events', 'Unlimited guests', 'RSVP tracking', 'Custom event pages', 'Email invitations', 'Guest import (CSV/Excel)', 'Analytics dashboard', 'Priority support', 'Custom branding'],
-    highlighted: false,
+    stroke: 'var(--teal)',
+    icon: (
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--teal)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+        <polyline points="9 11 12 14 22 4"/>
+        <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>
+      </svg>
+    ),
+    tag: 'Zero friction',
+    title: 'One link per guest',
+    desc: 'Send via WhatsApp. Guests confirm with one tap — no account, no friction.',
   },
 ]
 
-const Check = () => (
-  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--teal)" strokeWidth="2.5" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg>
-)
+const steps = [
+  { n: '01', label: 'Create your event', desc: 'Name, date, location' },
+  { n: '02', label: 'Upload guest list', desc: 'Excel or CSV file' },
+  { n: '03', label: 'Publish your site', desc: 'One click to go live' },
+  { n: '04', label: 'Track RSVPs live', desc: 'Real-time dashboard' },
+]
 
-export default function PricingPage() {
-  const router = useRouter()
-  const [user, setUser] = useState<{ id: string; email?: string } | null>(null)
-  const [currentPlan, setCurrentPlan] = useState('free')
-  const [loadingPlan, setLoadingPlan] = useState<string | null>(null)
-  const [authLoading, setAuthLoading] = useState(true)
-  const [discountCode, setDiscountCode] = useState('')
-  const [discountResult, setDiscountResult] = useState<{ valid: boolean; percent: number; message: string } | null>(null)
-  const [discountLoading, setDiscountLoading] = useState(false)
+const stats = [
+  { value: '2 min', label: 'to set up an event' },
+  { value: '1 link', label: 'per guest to RSVP' },
+  { value: '0 apps', label: 'guests need to install' },
+]
 
-  useEffect(() => {
-    const supabase = createClient()
-    supabase.auth.getUser().then(async ({ data: { user } }) => {
-      setUser(user)
-      if (user) {
-        const { data } = await supabase.from('profiles').select('plan').eq('id', user.id).single()
-        if (data?.plan) setCurrentPlan(data.plan)
-      }
-      setAuthLoading(false)
-    })
-  }, [])
-
-  async function applyDiscount() {
-    if (!discountCode.trim()) return
-    setDiscountLoading(true)
-    setDiscountResult(null)
-    try {
-      const res = await fetch('/api/discount/validate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ code: discountCode.trim().toUpperCase() }),
-      })
-      const data = await res.json()
-      if (data.valid) {
-        setDiscountResult({ valid: true, percent: data.percent, message: `${data.percent}% off applied!` })
-      } else {
-        setDiscountResult({ valid: false, percent: 0, message: data.error || 'Invalid code' })
-      }
-    } catch {
-      setDiscountResult({ valid: false, percent: 0, message: 'Something went wrong' })
-    } finally {
-      setDiscountLoading(false)
-    }
-  }
-
-  function discountedPrice(plan: typeof PLANS[0]) {
-    if (!discountResult?.valid || plan.price === 0) return null
-    const d = plan.price * (1 - discountResult.percent / 100)
-    return `€${d % 1 === 0 ? d : d.toFixed(2)}`
-  }
-
-  async function handlePlanClick(planId: string) {
-    if (planId === 'free') return
-    if (!user) { router.push(`/register?plan=${planId}`); return }
-    if (planId === currentPlan) return
-    setLoadingPlan(planId)
-    try {
-      const res = await fetch('/api/stripe/checkout', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ plan: planId, discountCode: discountResult?.valid ? discountCode.trim().toUpperCase() : undefined }),
-      })
-      const data = await res.json()
-      if (data.url) window.location.href = data.url
-      else alert('Something went wrong. Please try again.')
-    } catch { alert('Something went wrong.') }
-    finally { setLoadingPlan(null) }
-  }
-
-  const isCurrent = (id: string) => !!user && id === currentPlan
-  const isDisabled = (plan: typeof PLANS[0]) => authLoading || !!loadingPlan || isCurrent(plan.id) || plan.id === 'free'
-
+export default function LandingPage() {
   return (
     <div className="min-h-screen grid-bg" style={{ background: 'var(--navy)', position: 'relative', overflow: 'hidden' }}>
-      <div style={{ position: 'absolute', top: '-100px', left: '50%', transform: 'translateX(-50%)', width: '700px', height: '500px', background: 'radial-gradient(ellipse, rgba(10,191,188,0.09) 0%, transparent 70%)', pointerEvents: 'none' }} />
+
+      {/* Ambient glows */}
+      <div style={{ position: 'absolute', top: '-200px', left: '50%', transform: 'translateX(-50%)', width: '800px', height: '600px', background: 'radial-gradient(ellipse, rgba(10,191,188,0.1) 0%, transparent 70%)', pointerEvents: 'none', zIndex: 0 }} />
+      <div style={{ position: 'absolute', bottom: '100px', right: '-100px', width: '500px', height: '500px', background: 'radial-gradient(ellipse, rgba(6,214,160,0.06) 0%, transparent 70%)', pointerEvents: 'none', zIndex: 0 }} />
 
       {/* Nav */}
       <nav style={{ borderBottom: '1px solid var(--border-subtle)', backdropFilter: 'blur(20px)', background: 'rgba(11,22,40,0.85)', position: 'sticky', top: 0, zIndex: 50 }}
         className="px-6 sm:px-12 py-4 flex items-center justify-between">
-        <Link href="/" style={{ display: 'flex', alignItems: 'center', gap: '10px', textDecoration: 'none' }}>
+        <div className="flex items-center gap-2.5">
           <div style={{ background: 'linear-gradient(135deg, var(--teal), var(--green))', borderRadius: '10px', width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#0B1628" strokeWidth="2.5" strokeLinecap="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#0B1628" strokeWidth="2.5" strokeLinecap="round">
+              <rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
+            </svg>
           </div>
-          <span style={{ fontFamily: 'var(--font-display)', fontSize: '18px', fontWeight: '700', color: 'var(--text-primary)' }}>EventsDock</span>
-        </Link>
-        <div className="flex items-center gap-2">
-          {!authLoading && (user ? (
-            <Link href="/dashboard" className="btn-ghost" style={{ padding: '8px 16px', borderRadius: '8px', fontSize: '14px' }}>Dashboard →</Link>
-          ) : (
-            <>
-              <Link href="/login" style={{ color: 'var(--text-secondary)', fontSize: '14px', padding: '8px 14px' }} className="hover:text-white transition-colors">Sign in</Link>
-              <Link href="/register" className="btn-primary" style={{ padding: '9px 18px', borderRadius: '8px', fontSize: '14px' }}>Get started</Link>
-            </>
-          ))}
+          <span style={{ fontFamily: 'var(--font-display)', fontSize: '18px', fontWeight: '700', color: 'var(--text-primary)', letterSpacing: '-0.3px' }}>EventsDock</span>
+        </div>
+        <div className="flex items-center gap-1">
+          <Link href="/pricing" style={{ color: 'var(--text-secondary)', fontSize: '14px', padding: '8px 14px', borderRadius: '8px' }} className="hover:text-white transition-colors">Pricing</Link>
+          <Link href="/login" style={{ color: 'var(--text-secondary)', fontSize: '14px', padding: '8px 14px', borderRadius: '8px' }} className="hover:text-white transition-colors">Sign in</Link>
+          <Link href="/register" className="btn-primary" style={{ padding: '9px 18px', borderRadius: '8px', fontSize: '14px', marginLeft: '4px' }}>
+            Get started free
+          </Link>
         </div>
       </nav>
 
-      {/* Header */}
-      <div className="text-center px-6 pt-20 pb-12" style={{ position: 'relative', zIndex: 1 }}>
-        <h1 className="animate-fade-up" style={{ fontFamily: 'var(--font-display)', color: 'var(--text-primary)', fontSize: 'clamp(36px, 5vw, 54px)', fontWeight: '700', letterSpacing: '-1.5px', marginBottom: '12px' }}>
-          Simple, honest pricing
+      {/* Hero */}
+      <section className="max-w-5xl mx-auto px-6 pt-28 pb-16 text-center" style={{ position: 'relative', zIndex: 1 }}>
+        <div className="animate-fade-up" style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', background: 'var(--teal-glow)', border: '1px solid var(--border)', borderRadius: '99px', padding: '5px 16px 5px 8px', fontSize: '13px', color: 'var(--teal)', marginBottom: '40px' }}>
+          <span style={{ background: 'var(--teal)', borderRadius: '99px', padding: '2px 8px', fontSize: '10px', fontWeight: '700', color: 'var(--navy)', letterSpacing: '0.05em' }}>NEW</span>
+          Free during early access
+        </div>
+
+        <h1 className="animate-fade-up-1" style={{ fontFamily: 'var(--font-display)', fontSize: 'clamp(44px, 7vw, 80px)', fontWeight: '800', lineHeight: '1.05', letterSpacing: '-2.5px', marginBottom: '28px' }}>
+          Events that leave<br />
+          <span className="gradient-text">a lasting impression.</span>
         </h1>
-        <p className="animate-fade-up-1" style={{ color: 'var(--text-secondary)', fontSize: '17px', fontWeight: '300', marginBottom: '32px' }}>
-          {authLoading ? '\u00A0' : user ? 'Upgrade your plan anytime.' : 'Start free, upgrade when you need more.'}
+
+        <p className="animate-fade-up-2" style={{ color: 'var(--text-secondary)', fontSize: '18px', fontWeight: '300', lineHeight: '1.7', maxWidth: '500px', margin: '0 auto 44px' }}>
+          Upload your guest list, build a stunning event page, and let guests RSVP with a single link. No friction for your guests — ever.
         </p>
 
-        {/* Discount code */}
-        <div className="animate-fade-up-2" style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', justifyContent: 'center' }}>
-          <input
-            type="text"
-            value={discountCode}
-            onChange={e => { setDiscountCode(e.target.value.toUpperCase()); setDiscountResult(null) }}
-            onKeyDown={e => e.key === 'Enter' && applyDiscount()}
-            placeholder="HAVE A CODE?"
-            className="input-dark"
-            style={{ width: '180px', borderRadius: '9px', padding: '10px 14px', fontSize: '13px', fontWeight: '600', letterSpacing: '0.06em' }}
-          />
-          <button
-            onClick={applyDiscount}
-            disabled={discountLoading || !discountCode.trim()}
-            className="btn-ghost"
-            style={{ padding: '10px 18px', borderRadius: '9px', fontSize: '13px', opacity: !discountCode.trim() ? 0.4 : 1 }}
-          >
-            {discountLoading ? '...' : 'Apply'}
-          </button>
-          {discountResult && (
-            <span style={{
-              fontSize: '13px', fontWeight: '600', padding: '6px 14px', borderRadius: '99px',
-              background: discountResult.valid ? 'rgba(6,214,160,0.12)' : 'rgba(239,68,68,0.1)',
-              border: `1px solid ${discountResult.valid ? 'rgba(6,214,160,0.3)' : 'rgba(239,68,68,0.3)'}`,
-              color: discountResult.valid ? 'var(--green)' : '#f87171',
-            }}>
-              {discountResult.valid ? `✓ ${discountResult.message}` : `✗ ${discountResult.message}`}
-            </span>
-          )}
+        <div className="animate-fade-up-3 flex flex-col sm:flex-row items-center justify-center gap-3">
+          <Link href="/register" className="btn-primary" style={{ padding: '14px 32px', borderRadius: '10px', fontSize: '15px', display: 'inline-flex', alignItems: 'center', gap: '8px' }}>
+            Create your first event
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+          </Link>
+          <Link href="/login" className="btn-ghost" style={{ padding: '14px 32px', borderRadius: '10px', fontSize: '15px' }}>
+            Sign in
+          </Link>
         </div>
-      </div>
+      </section>
 
-      {/* Cards */}
-      <div className="max-w-5xl mx-auto px-6 pb-20" style={{ position: 'relative', zIndex: 1 }}>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-          {PLANS.map((plan, i) => {
-            const dp = discountedPrice(plan)
-            const current = isCurrent(plan.id)
-            return (
-              <div key={plan.id} className={`glass animate-fade-up-${i + 1}`} style={{
-                borderRadius: '18px', padding: '32px', position: 'relative',
-                border: current ? '1px solid rgba(6,214,160,0.4)' : plan.highlighted ? '1px solid rgba(10,191,188,0.35)' : undefined,
-                background: plan.highlighted ? 'rgba(10,191,188,0.06)' : undefined,
-              }}>
-                {plan.highlighted && !current && (
-                  <div style={{ position: 'absolute', top: '-12px', left: '50%', transform: 'translateX(-50%)', background: 'linear-gradient(135deg, var(--teal), var(--green))', color: 'var(--navy)', fontSize: '10px', fontWeight: '800', padding: '4px 14px', borderRadius: '99px', textTransform: 'uppercase', letterSpacing: '0.1em', whiteSpace: 'nowrap' }}>
-                    Most popular
-                  </div>
-                )}
-                {current && (
-                  <div style={{ position: 'absolute', top: '-12px', left: '50%', transform: 'translateX(-50%)', background: 'var(--green)', color: 'var(--navy)', fontSize: '10px', fontWeight: '800', padding: '4px 14px', borderRadius: '99px', textTransform: 'uppercase', letterSpacing: '0.1em', whiteSpace: 'nowrap' }}>
-                    ✓ Your plan
-                  </div>
-                )}
+      {/* Stats */}
+      <section className="max-w-5xl mx-auto px-6 pb-20" style={{ position: 'relative', zIndex: 1 }}>
+        <div className="grid grid-cols-3 gap-4 max-w-md mx-auto">
+          {stats.map((s, i) => (
+            <div key={s.label} className={`text-center animate-fade-up-${i + 2}`}>
+              <div style={{ fontFamily: 'var(--font-display)', fontSize: '28px', fontWeight: '800' }} className="gradient-text">{s.value}</div>
+              <div style={{ color: 'var(--text-muted)', fontSize: '12px', marginTop: '4px' }}>{s.label}</div>
+            </div>
+          ))}
+        </div>
+      </section>
 
-                <p style={{ color: 'var(--text-muted)', fontSize: '11px', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '10px' }}>{plan.label}</p>
-
-                <div style={{ display: 'flex', alignItems: 'flex-end', gap: '6px', marginBottom: '6px' }}>
-                  {dp ? (
-                    <>
-                      <span style={{ fontFamily: 'var(--font-display)', fontSize: '44px', fontWeight: '800', color: 'var(--text-primary)', lineHeight: 1 }}>{dp}</span>
-                      <span style={{ color: 'var(--text-muted)', fontSize: '18px', fontWeight: '500', textDecoration: 'line-through', marginBottom: '5px' }}>{plan.priceLabel}</span>
-                    </>
-                  ) : (
-                    <span style={{ fontFamily: 'var(--font-display)', fontSize: '44px', fontWeight: '800', color: 'var(--text-primary)', lineHeight: 1 }}>{plan.priceLabel}</span>
-                  )}
-                  <span style={{ color: 'var(--text-muted)', fontSize: '13px', marginBottom: '7px' }}>/mo</span>
-                </div>
-
-                <p style={{ color: 'var(--text-secondary)', fontSize: '13px', fontWeight: '300', marginBottom: '24px' }}>{plan.description}</p>
-
-                <ul style={{ listStyle: 'none', padding: 0, margin: '0 0 28px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                  {plan.features.map(f => (
-                    <li key={f} style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '13px', color: 'var(--text-secondary)', fontWeight: '300' }}>
-                      <Check />{f}
-                    </li>
-                  ))}
-                </ul>
-
-                <button
-                  onClick={() => handlePlanClick(plan.id)}
-                  disabled={isDisabled(plan)}
-                  style={{
-                    display: 'block', width: '100%', padding: '12px', borderRadius: '10px',
-                    fontSize: '14px', fontWeight: '600', cursor: isDisabled(plan) ? 'default' : 'pointer',
-                    transition: 'all 0.2s', textAlign: 'center',
-                    ...(current
-                      ? { background: 'rgba(6,214,160,0.1)', color: 'var(--green)', border: '1px solid rgba(6,214,160,0.3)' }
-                      : plan.highlighted
-                      ? { background: 'linear-gradient(135deg, var(--teal), var(--green))', color: 'var(--navy)', border: 'none', opacity: isDisabled(plan) ? 0.5 : 1 }
-                      : { background: 'transparent', color: 'var(--text-secondary)', border: '1px solid var(--border)', opacity: isDisabled(plan) ? 0.4 : 1 }
-                    ),
-                  }}
-                >
-                  {loadingPlan === plan.id ? 'Redirecting...' :
-                   current ? '✓ Current plan' :
-                   plan.id === 'free' ? (user ? '✓ Included' : 'Get started free') :
-                   !user ? `Start with ${plan.label}` : `Upgrade to ${plan.label}`}
-                </button>
+      {/* Feature cards */}
+      <section className="max-w-5xl mx-auto px-6 pb-28" style={{ position: 'relative', zIndex: 1 }}>
+        <div className="grid sm:grid-cols-3 gap-4">
+          {features.map((f) => (
+            <div key={f.title} className="glass card-hover" style={{ borderRadius: '16px', padding: '28px' }}>
+              <div style={{ background: 'var(--teal-glow)', borderRadius: '12px', width: '48px', height: '48px', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '20px' }}>
+                {f.icon}
               </div>
-            )
-          })}
+              <div style={{ display: 'inline-block', background: 'rgba(10,191,188,0.08)', border: '1px solid var(--border)', borderRadius: '99px', padding: '2px 10px', fontSize: '11px', color: 'var(--teal)', fontWeight: '600', marginBottom: '12px', letterSpacing: '0.03em' }}>
+                {f.tag}
+              </div>
+              <h3 style={{ fontFamily: 'var(--font-display)', fontWeight: '700', fontSize: '16px', color: 'var(--text-primary)', marginBottom: '8px' }}>{f.title}</h3>
+              <p style={{ color: 'var(--text-secondary)', fontSize: '14px', lineHeight: '1.6', fontWeight: '300' }}>{f.desc}</p>
+            </div>
+          ))}
         </div>
-      </div>
+      </section>
 
-      {/* FAQ */}
-      <div className="max-w-2xl mx-auto px-6 pb-24" style={{ position: 'relative', zIndex: 1 }}>
-        <h2 style={{ fontFamily: 'var(--font-display)', color: 'var(--text-primary)', fontSize: '26px', fontWeight: '700', textAlign: 'center', letterSpacing: '-0.5px', marginBottom: '36px' }}>
-          Frequently asked questions
-        </h2>
-        {[
-          { q: 'Can I switch plans later?', a: 'Yes, upgrade or downgrade at any time. Changes take effect immediately.' },
-          { q: 'Do you offer refunds?', a: '14-day money-back guarantee on all paid plans. No questions asked.' },
-          { q: 'What payment methods do you accept?', a: 'All major credit and debit cards via Stripe. Your payment info is never stored on our servers.' },
-          { q: 'How do discount codes work?', a: 'Enter your code above to apply a percentage off your monthly price. The discount is applied at checkout.' },
-        ].map(({ q, a }) => (
-          <div key={q} style={{ borderBottom: '1px solid var(--border-subtle)', padding: '20px 0' }}>
-            <p style={{ fontFamily: 'var(--font-display)', color: 'var(--text-primary)', fontWeight: '600', fontSize: '15px', marginBottom: '8px' }}>{q}</p>
-            <p style={{ color: 'var(--text-secondary)', fontSize: '14px', lineHeight: '1.6', fontWeight: '300' }}>{a}</p>
+      {/* Steps */}
+      <section style={{ borderTop: '1px solid var(--border-subtle)', borderBottom: '1px solid var(--border-subtle)', background: 'rgba(17,34,64,0.5)', position: 'relative', zIndex: 1 }} className="py-24 px-6">
+        <div className="max-w-4xl mx-auto text-center">
+          <h2 style={{ fontFamily: 'var(--font-display)', color: 'var(--text-primary)', fontSize: 'clamp(28px, 4vw, 40px)', fontWeight: '800', letterSpacing: '-1px', marginBottom: '12px' }}>
+            Up and running in minutes
+          </h2>
+          <p style={{ color: 'var(--text-secondary)', fontSize: '15px', fontWeight: '300', marginBottom: '56px' }}>
+            No learning curve. Just fill in the details and go.
+          </p>
+          <div className="grid sm:grid-cols-4 gap-8">
+            {steps.map((s) => (
+              <div key={s.n} className="text-center">
+                <div style={{ fontFamily: 'var(--font-display)', fontSize: '11px', fontWeight: '700', color: 'var(--teal)', letterSpacing: '2px', marginBottom: '16px' }}>{s.n}</div>
+                <p style={{ color: 'var(--text-primary)', fontSize: '14px', fontFamily: 'var(--font-display)', fontWeight: '600', marginBottom: '6px' }}>{s.label}</p>
+                <p style={{ color: 'var(--text-muted)', fontSize: '12px' }}>{s.desc}</p>
+              </div>
+            ))}
           </div>
-        ))}
-      </div>
+        </div>
+      </section>
+
+      {/* CTA */}
+      <section className="text-center py-28 px-6" style={{ position: 'relative', zIndex: 1 }}>
+        <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%,-50%)', width: '600px', height: '300px', background: 'radial-gradient(ellipse, rgba(10,191,188,0.08) 0%, transparent 70%)', pointerEvents: 'none' }} />
+        <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 'clamp(32px, 5vw, 52px)', fontWeight: '800', letterSpacing: '-1.5px', color: 'var(--text-primary)', marginBottom: '12px' }}>
+          Ready to plan something<br />
+          <span className="gradient-text">unforgettable?</span>
+        </h2>
+        <p style={{ color: 'var(--text-secondary)', fontSize: '15px', fontWeight: '300', marginBottom: '36px' }}>
+          Free to use. No credit card required.
+        </p>
+        <Link href="/register" className="btn-primary" style={{ padding: '16px 40px', borderRadius: '10px', fontSize: '16px', display: 'inline-flex', alignItems: 'center', gap: '10px' }}>
+          Create your event free
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+        </Link>
+      </section>
+
+      {/* Footer */}
+      <footer style={{ borderTop: '1px solid var(--border-subtle)', position: 'relative', zIndex: 1 }} className="py-8 px-6">
+        <div className="max-w-5xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
+          <div className="flex items-center gap-2">
+            <div style={{ background: 'linear-gradient(135deg, var(--teal), var(--green))', borderRadius: '7px', width: '24px', height: '24px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#0B1628" strokeWidth="2.5" strokeLinecap="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+            </div>
+            <span style={{ fontFamily: 'var(--font-display)', fontSize: '14px', fontWeight: '700', color: 'var(--text-secondary)' }}>EventsDock</span>
+          </div>
+          <p style={{ color: 'var(--text-muted)', fontSize: '13px' }}>
+            © {new Date().getFullYear()} EventsDock. Made for weddings, birthdays & everything in between.
+          </p>
+          <div className="flex items-center gap-6">
+            <Link href="/pricing" style={{ color: 'var(--text-muted)', fontSize: '13px' }} className="hover:text-white transition-colors">Pricing</Link>
+            <Link href="/login" style={{ color: 'var(--text-muted)', fontSize: '13px' }} className="hover:text-white transition-colors">Sign in</Link>
+          </div>
+        </div>
+      </footer>
     </div>
   )
 }
