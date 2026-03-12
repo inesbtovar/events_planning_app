@@ -28,6 +28,7 @@ export default function BillingPage() {
   // Delete account state
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [deleteInput, setDeleteInput] = useState('')
+  const [deletePassword, setDeletePassword] = useState('')
   const [deleteLoading, setDeleteLoading] = useState(false)
   const [deleteError, setDeleteError] = useState('')
 
@@ -80,10 +81,18 @@ export default function BillingPage() {
       setDeleteError('Email does not match.')
       return
     }
+    if (!deletePassword) {
+      setDeleteError('Please enter your password to confirm.')
+      return
+    }
     setDeleteLoading(true)
     setDeleteError('')
     try {
-      const res = await fetch('/api/account/delete', { method: 'DELETE' })
+      const res = await fetch('/api/account/delete', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password: deletePassword }),
+      })
       if (res.ok) {
         const supabase = createClient()
         await supabase.auth.signOut()
@@ -245,12 +254,25 @@ export default function BillingPage() {
                   className="input-dark"
                   style={{ borderRadius: '9px', padding: '11px 14px', fontSize: '14px', borderColor: deleteError ? 'rgba(239,68,68,0.5)' : undefined }}
                 />
+              </div>
+              <div>
+                <label style={{ display: 'block', fontSize: '13px', color: 'var(--text-secondary)', marginBottom: '8px' }}>
+                  Enter your password to confirm
+                </label>
+                <input
+                  type="password"
+                  value={deletePassword}
+                  onChange={e => { setDeletePassword(e.target.value); setDeleteError('') }}
+                  placeholder="Your password"
+                  className="input-dark"
+                  style={{ borderRadius: '9px', padding: '11px 14px', fontSize: '14px', borderColor: deleteError ? 'rgba(239,68,68,0.5)' : undefined }}
+                />
                 {deleteError && <p style={{ color: '#f87171', fontSize: '12px', marginTop: '6px' }}>{deleteError}</p>}
               </div>
               <div style={{ display: 'flex', gap: '10px' }}>
                 <button
                   onClick={handleDeleteAccount}
-                  disabled={deleteLoading || deleteInput !== email}
+                  disabled={deleteLoading || deleteInput !== email || !deletePassword}
                   style={{
                     flex: 1, padding: '12px', borderRadius: '9px', border: 'none',
                     background: deleteInput === email ? 'rgba(239,68,68,0.85)' : 'rgba(239,68,68,0.2)',
@@ -263,7 +285,7 @@ export default function BillingPage() {
                   {deleteLoading ? 'Deleting...' : 'Yes, delete my account'}
                 </button>
                 <button
-                  onClick={() => { setShowDeleteConfirm(false); setDeleteInput(''); setDeleteError('') }}
+                  onClick={() => { setShowDeleteConfirm(false); setDeleteInput(''); setDeletePassword(''); setDeleteError('') }}
                   className="btn-ghost"
                   style={{ padding: '12px 20px', borderRadius: '9px', fontSize: '14px' }}
                 >

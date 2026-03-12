@@ -2,28 +2,22 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { timingSafeEqual } from 'crypto'
+import { rateLimit, getIP } from '@/lib/rate-limit'
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 )
 
-// FIX: Use timing-safe comparison to prevent timing attacks on the admin secret.
-// The old string === comparison leaks timing info that could allow brute-forcing.
 function checkAuth(request: NextRequest): boolean {
   const secret = request.headers.get('x-admin-secret')
   const expected = process.env.ADMIN_SECRET
-
   if (!secret || !expected) return false
-
   try {
     const a = Buffer.from(secret.padEnd(64).slice(0, 64))
     const b = Buffer.from(expected.padEnd(64).slice(0, 64))
-    // Only safe to compare if lengths match — check separately to avoid leaking length
     return secret.length === expected.length && timingSafeEqual(a, b)
-  } catch {
-    return false
-  }
+  } catch { return false }
 }
 
 function sanitizeCode(code: unknown): string | null {
@@ -32,19 +26,26 @@ function sanitizeCode(code: unknown): string | null {
   return cleaned.length >= 3 && cleaned.length <= 50 ? cleaned : null
 }
 
+// FIX #4: Rate limit all admin endpoints — 10 attempts/hr/IP prevents brute force
+function adminRateLimit(request: NextRequest): boolean {
+  const ip = getIP(request)
+  const { allowed } = rateLimit(ip, 'admin', { limit: 10, windowMs: 60 * 60 * 1000 })
+  return allowed
+}
+
 export async function GET(request: NextRequest) {
+  if (!adminRateLimit(request)) return NextResponse.json({ error: 'Too many requests' }, { status: 429 })
   if (!checkAuth(request)) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const { data, error } = await supabaseAdmin
-    .from('discount_codes')
-    .select('*')
-    .order('created_at', { ascending: false })
+    .from('discount_codes').select('*').order('created_at', { ascending: false })
 
   if (error) return NextResponse.json({ error: 'Database error' }, { status: 500 })
   return NextResponse.json({ codes: data })
 }
 
 export async function POST(request: NextRequest) {
+  if (!adminRateLimit(request)) return NextResponse.json({ error: 'Too many requests' }, { status: 429 })
   if (!checkAuth(request)) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   let body: any
@@ -71,18 +72,17 @@ export async function POST(request: NextRequest) {
   const { data, error } = await supabaseAdmin
     .from('discount_codes')
     .insert({ code, percent, max_uses: maxUses, expires_at: expiresAt, active: true, used_count: 0 })
-    .select()
-    .single()
+    .select().single()
 
   if (error) {
     if (error.code === '23505') return NextResponse.json({ error: 'Code already exists' }, { status: 409 })
     return NextResponse.json({ error: 'Database error' }, { status: 500 })
   }
-
   return NextResponse.json({ code: data })
 }
 
 export async function PATCH(request: NextRequest) {
+  if (!adminRateLimit(request)) return NextResponse.json({ error: 'Too many requests' }, { status: 429 })
   if (!checkAuth(request)) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   let body: any
@@ -95,16 +95,13 @@ export async function PATCH(request: NextRequest) {
     return NextResponse.json({ error: 'id (string) and active (boolean) required' }, { status: 400 })
   }
 
-  const { error } = await supabaseAdmin
-    .from('discount_codes')
-    .update({ active })
-    .eq('id', id)
-
+  const { error } = await supabaseAdmin.from('discount_codes').update({ active }).eq('id', id)
   if (error) return NextResponse.json({ error: 'Database error' }, { status: 500 })
   return NextResponse.json({ ok: true })
 }
 
 export async function DELETE(request: NextRequest) {
+  if (!adminRateLimit(request)) return NextResponse.json({ error: 'Too many requests' }, { status: 429 })
   if (!checkAuth(request)) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   let body: any
@@ -113,15 +110,9 @@ export async function DELETE(request: NextRequest) {
   }
 
   const { id } = body
-  if (typeof id !== 'string') {
-    return NextResponse.json({ error: 'id (string) required' }, { status: 400 })
-  }
+  if (typeof id !== 'string') return NextResponse.json({ error: 'id (string) required' }, { status: 400 })
 
-  const { error } = await supabaseAdmin
-    .from('discount_codes')
-    .delete()
-    .eq('id', id)
-
+  const { error } = await supabaseAdmin.from('discount_codes').delete().eq('id', id)
   if (error) return NextResponse.json({ error: 'Database error' }, { status: 500 })
   return NextResponse.json({ ok: true })
 }

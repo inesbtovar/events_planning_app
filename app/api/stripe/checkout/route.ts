@@ -15,9 +15,6 @@ const supabaseAdmin = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 )
 
-// FIX: Whitelist valid plans — never trust a price ID from the client.
-// Old code accepted any plan string and looked it up in PLANS,
-// but if PLANS had undefined keys it could send undefined to Stripe.
 const VALID_PLANS = ['starter', 'pro'] as const
 type Plan = typeof VALID_PLANS[number]
 
@@ -27,12 +24,9 @@ const PLAN_PRICE_IDS: Record<Plan, string> = {
 }
 
 export async function POST(request: NextRequest) {
-  // Rate limit: 10 checkout attempts per hour per IP
   const ip = getIP(request)
-  const limit = rateLimit(ip, 'checkout', { limit: 10, windowMs: 60 * 60 * 1000 })
-  if (!limit.allowed) {
-    return NextResponse.json({ error: 'Too many requests' }, { status: 429 })
-  }
+  const { allowed } = rateLimit(ip, 'checkout', { limit: 10, windowMs: 60 * 60 * 1000 })
+  if (!allowed) return NextResponse.json({ error: 'Too many requests' }, { status: 429 })
 
   const cookieStore = await cookies()
   const supabase = createServerClient(
@@ -58,14 +52,13 @@ export async function POST(request: NextRequest) {
 
   const { plan, discountCode } = body
 
-  // Validate plan is exactly one of the known values
   if (!VALID_PLANS.includes(plan as Plan)) {
     return NextResponse.json({ error: 'Invalid plan' }, { status: 400 })
   }
 
   const priceId = PLAN_PRICE_IDS[plan as Plan]
   if (!priceId) {
-    console.error(`Missing price ID env var for plan: ${plan}`)
+    console.error(`Missing price ID for plan: ${plan}`)
     return NextResponse.json({ error: 'Plan not configured' }, { status: 500 })
   }
 
@@ -81,45 +74,45 @@ export async function POST(request: NextRequest) {
     cancel_url: `${appUrl}/pricing`,
   }
 
-  // Apply discount code if provided — re-validate server-side, never trust the client
+  // FIX #2: Use atomic RPC to prevent race condition on discount codes.
+  // Old code did read → check → update in 3 separate calls.
+  // Now a single Postgres function locks the row and increments atomically.
   if (discountCode && typeof discountCode === 'string') {
     const cleanCode = discountCode.toUpperCase().trim().replace(/[^A-Z0-9_-]/g, '')
 
     if (cleanCode) {
-      const { data: codeData } = await supabaseAdmin
-        .from('discount_codes')
-        .select('code, percent, active, max_uses, used_count, expires_at, stripe_coupon_id')
-        .eq('code', cleanCode)
-        .single()
+      type RedemptionResult = {
+        code: string
+        percent: number
+        stripe_coupon_id: string | null
+        is_valid: boolean
+        failure_reason: string | null
+      }
+      const { data: redemption, error: rpcError } = (await supabaseAdmin
+        .rpc('redeem_discount_code', { p_code: cleanCode })
+        .single()) as unknown as { data: RedemptionResult | null, error: any }
 
-      const isValid = codeData &&
-        codeData.active &&
-        (!codeData.expires_at || new Date(codeData.expires_at) > new Date()) &&
-        (codeData.max_uses === null || codeData.used_count < codeData.max_uses)
+      if (rpcError) {
+        console.error('Discount RPC error:', rpcError.message)
+        // Don't block checkout if discount fails — just skip it
+      } else if (redemption?.is_valid) {
+        let couponId = redemption.stripe_coupon_id
 
-      if (isValid) {
-        let couponId = codeData.stripe_coupon_id
-
+        // Create Stripe coupon on first use if not cached
         if (!couponId) {
           const coupon = await stripe.coupons.create({
-            percent_off: codeData.percent,
+            percent_off: redemption.percent,
             duration: 'once',
-            name: `EventsDock ${codeData.code}`,
+            name: `EventsDock ${redemption.code}`,
           })
           couponId = coupon.id
           await supabaseAdmin
             .from('discount_codes')
             .update({ stripe_coupon_id: couponId })
-            .eq('code', codeData.code)
+            .eq('code', redemption.code)
         }
 
         sessionParams.discounts = [{ coupon: couponId }]
-
-        // Increment usage count
-        await supabaseAdmin
-          .from('discount_codes')
-          .update({ used_count: (codeData.used_count ?? 0) + 1 })
-          .eq('code', codeData.code)
       }
     }
   }
@@ -128,7 +121,7 @@ export async function POST(request: NextRequest) {
     const session = await stripe.checkout.sessions.create(sessionParams)
     return NextResponse.json({ url: session.url })
   } catch (err) {
-    console.error('Stripe session creation failed:', err)
+    console.error('Stripe session error:', err)
     return NextResponse.json({ error: 'Failed to create checkout session' }, { status: 500 })
   }
 }
