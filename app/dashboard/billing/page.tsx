@@ -31,14 +31,21 @@ export default function BillingPage() {
   const [deleteError, setDeleteError] = useState('')
 
   useEffect(() => {
-    const supabase = createClient()
-    supabase.auth.getUser().then(async ({ data: { user } }) => {
+    async function fetchPlan() {
+      const supabase = createClient()
+      const { data: { user } } = await supabase.auth.getUser()
       if (!user) { router.push('/login'); return }
       setEmail(user.email ?? '')
       const { data } = await supabase.from('profiles').select('plan').eq('id', user.id).single()
       if (data?.plan) setPlan(data.plan)
       setLoading(false)
-    })
+    }
+
+    fetchPlan()
+
+    // Refetch when user returns from Stripe portal
+    window.addEventListener('focus', fetchPlan)
+    return () => window.removeEventListener('focus', fetchPlan)
   }, [router])
 
   async function openBillingPortal() {
