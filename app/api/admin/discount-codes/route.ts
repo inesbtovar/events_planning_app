@@ -1,18 +1,37 @@
 // app/api/admin/discount-codes/route.ts
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
+import { timingSafeEqual } from 'crypto'
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 )
 
-function checkAuth(request: NextRequest) {
+// FIX: Use timing-safe comparison to prevent timing attacks on the admin secret.
+// The old string === comparison leaks timing info that could allow brute-forcing.
+function checkAuth(request: NextRequest): boolean {
   const secret = request.headers.get('x-admin-secret')
-  return secret === process.env.ADMIN_SECRET
+  const expected = process.env.ADMIN_SECRET
+
+  if (!secret || !expected) return false
+
+  try {
+    const a = Buffer.from(secret.padEnd(64).slice(0, 64))
+    const b = Buffer.from(expected.padEnd(64).slice(0, 64))
+    // Only safe to compare if lengths match — check separately to avoid leaking length
+    return secret.length === expected.length && timingSafeEqual(a, b)
+  } catch {
+    return false
+  }
 }
 
-// GET - list all codes
+function sanitizeCode(code: unknown): string | null {
+  if (typeof code !== 'string') return null
+  const cleaned = code.toUpperCase().trim().replace(/[^A-Z0-9_-]/g, '')
+  return cleaned.length >= 3 && cleaned.length <= 50 ? cleaned : null
+}
+
 export async function GET(request: NextRequest) {
   if (!checkAuth(request)) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
@@ -21,57 +40,88 @@ export async function GET(request: NextRequest) {
     .select('*')
     .order('created_at', { ascending: false })
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  if (error) return NextResponse.json({ error: 'Database error' }, { status: 500 })
   return NextResponse.json({ codes: data })
 }
 
-// POST - create new code
 export async function POST(request: NextRequest) {
   if (!checkAuth(request)) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const body = await request.json()
-  const { code, percent, max_uses, expires_at } = body
+  let body: any
+  try { body = await request.json() } catch {
+    return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 })
+  }
 
-  if (!code || !percent) return NextResponse.json({ error: 'Code and percent are required' }, { status: 400 })
-  if (percent < 1 || percent > 100) return NextResponse.json({ error: 'Percent must be 1–100' }, { status: 400 })
+  const code = sanitizeCode(body.code)
+  const percent = Number(body.percent)
+  const maxUses = body.max_uses != null ? Number(body.max_uses) : null
+  const expiresAt = body.expires_at ?? null
+
+  if (!code) return NextResponse.json({ error: 'Invalid code format (3–50 alphanumeric chars)' }, { status: 400 })
+  if (!Number.isInteger(percent) || percent < 1 || percent > 100) {
+    return NextResponse.json({ error: 'Percent must be an integer 1–100' }, { status: 400 })
+  }
+  if (maxUses !== null && (!Number.isInteger(maxUses) || maxUses < 1)) {
+    return NextResponse.json({ error: 'max_uses must be a positive integer' }, { status: 400 })
+  }
+  if (expiresAt && isNaN(Date.parse(expiresAt))) {
+    return NextResponse.json({ error: 'Invalid expires_at date' }, { status: 400 })
+  }
 
   const { data, error } = await supabaseAdmin
     .from('discount_codes')
-    .insert({
-      code: code.toUpperCase().trim(),
-      percent: Number(percent),
-      max_uses: max_uses ?? null,
-      expires_at: expires_at ?? null,
-      active: true,
-      used_count: 0,
-    })
+    .insert({ code, percent, max_uses: maxUses, expires_at: expiresAt, active: true, used_count: 0 })
     .select()
     .single()
 
   if (error) {
     if (error.code === '23505') return NextResponse.json({ error: 'Code already exists' }, { status: 409 })
-    return NextResponse.json({ error: error.message }, { status: 500 })
+    return NextResponse.json({ error: 'Database error' }, { status: 500 })
   }
 
   return NextResponse.json({ code: data })
 }
 
-// PATCH - toggle active
 export async function PATCH(request: NextRequest) {
   if (!checkAuth(request)) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const { id, active } = await request.json()
-  const { error } = await supabaseAdmin.from('discount_codes').update({ active }).eq('id', id)
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  let body: any
+  try { body = await request.json() } catch {
+    return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 })
+  }
+
+  const { id, active } = body
+  if (typeof id !== 'string' || typeof active !== 'boolean') {
+    return NextResponse.json({ error: 'id (string) and active (boolean) required' }, { status: 400 })
+  }
+
+  const { error } = await supabaseAdmin
+    .from('discount_codes')
+    .update({ active })
+    .eq('id', id)
+
+  if (error) return NextResponse.json({ error: 'Database error' }, { status: 500 })
   return NextResponse.json({ ok: true })
 }
 
-// DELETE - remove code
 export async function DELETE(request: NextRequest) {
   if (!checkAuth(request)) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const { id } = await request.json()
-  const { error } = await supabaseAdmin.from('discount_codes').delete().eq('id', id)
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  let body: any
+  try { body = await request.json() } catch {
+    return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 })
+  }
+
+  const { id } = body
+  if (typeof id !== 'string') {
+    return NextResponse.json({ error: 'id (string) required' }, { status: 400 })
+  }
+
+  const { error } = await supabaseAdmin
+    .from('discount_codes')
+    .delete()
+    .eq('id', id)
+
+  if (error) return NextResponse.json({ error: 'Database error' }, { status: 500 })
   return NextResponse.json({ ok: true })
 }

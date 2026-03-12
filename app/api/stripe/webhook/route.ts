@@ -19,8 +19,6 @@ function getPlanFromPriceId(priceId: string): string {
 }
 
 async function downgradeByCustomerId(customerId: string, reason: string) {
-  console.log(`Downgrade attempt - customer: ${customerId} - reason: ${reason}`)
-
   const { data: profile, error } = await supabase
     .from('profiles')
     .select('id, plan')
@@ -42,45 +40,39 @@ async function downgradeByCustomerId(customerId: string, reason: string) {
     return false
   }
 
-  console.log(`✓ Downgraded profile ${profile.id} from ${profile.plan} to free`)
+  console.log(`Downgraded profile ${profile.id} → free | reason: ${reason}`)
   return true
 }
 
 export async function POST(request: NextRequest) {
   let event: Stripe.Event
 
-  try {
-    const body = await request.text()
-    const signature = request.headers.get('stripe-signature')
+  const body = await request.text()
+  const signature = request.headers.get('stripe-signature')
 
-    if (signature && process.env.STRIPE_WEBHOOK_SECRET) {
-      try {
-        event = stripe.webhooks.constructEvent(body, signature, process.env.STRIPE_WEBHOOK_SECRET)
-      } catch (sigErr) {
-        console.error('Sig failed, using raw body:', sigErr)
-        event = JSON.parse(body) as Stripe.Event
-      }
-    } else {
-      event = JSON.parse(body) as Stripe.Event
-    }
-  } catch (err) {
-    console.error('Webhook body error:', err)
-    return NextResponse.json({ error: 'Bad request' }, { status: 400 })
+  // FIX: Reject ALL requests that fail signature verification — no fallback.
+  // The old code fell back to JSON.parse(body) when sig failed, meaning anyone
+  // could POST a fake event and manipulate user plans.
+  if (!signature || !process.env.STRIPE_WEBHOOK_SECRET) {
+    console.error('Missing stripe-signature or STRIPE_WEBHOOK_SECRET')
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
-  console.log(`\n=== WEBHOOK: ${event.type} ===`)
+  try {
+    event = stripe.webhooks.constructEvent(body, signature, process.env.STRIPE_WEBHOOK_SECRET)
+  } catch (err) {
+    console.error('Webhook signature verification failed:', err)
+    return NextResponse.json({ error: 'Invalid signature' }, { status: 400 })
+  }
 
-  // ── UPGRADE: checkout completed ──────────────────────────────────────────
   if (event.type === 'checkout.session.completed') {
     const session = event.data.object as Stripe.Checkout.Session
     const userId = session.metadata?.user_id
     const customerId = session.customer as string
     const subscriptionId = session.subscription as string
 
-    console.log('checkout - userId:', userId, 'customer:', customerId, 'sub:', subscriptionId)
-
     if (!userId) {
-      console.error('Missing user_id in metadata')
+      console.error('Missing user_id in checkout metadata')
       return NextResponse.json({ received: true })
     }
 
@@ -88,12 +80,10 @@ export async function POST(request: NextRequest) {
     try {
       const sub = await stripe.subscriptions.retrieve(subscriptionId)
       plan = getPlanFromPriceId(sub.items.data[0].price.id)
-      console.log('plan resolved:', plan)
     } catch (e) {
       console.error('Could not retrieve subscription:', e)
     }
 
-    // Upsert profile - make sure stripe_customer_id is always saved
     const { error } = await supabase.from('profiles').upsert({
       id: userId,
       plan,
@@ -102,31 +92,18 @@ export async function POST(request: NextRequest) {
     }, { onConflict: 'id' })
 
     if (error) console.error('Upsert error:', error.message)
-    else console.log(`✓ Upserted user ${userId} → plan: ${plan}, customer: ${customerId}`)
   }
 
-  // ── CANCEL: subscription deleted ─────────────────────────────────────────
   if (event.type === 'customer.subscription.deleted') {
     const sub = event.data.object as Stripe.Subscription
-    await downgradeByCustomerId(sub.customer as string, `subscription deleted, status: ${sub.status}`)
+    await downgradeByCustomerId(sub.customer as string, `subscription deleted`)
   }
 
-  // ── CANCEL: subscription updated to bad status ────────────────────────────
   if (event.type === 'customer.subscription.updated') {
     const sub = event.data.object as Stripe.Subscription
-    console.log('subscription.updated - status:', sub.status)
     if (['canceled', 'unpaid', 'past_due', 'incomplete_expired'].includes(sub.status)) {
-      await downgradeByCustomerId(sub.customer as string, `status changed to: ${sub.status}`)
+      await downgradeByCustomerId(sub.customer as string, `status: ${sub.status}`)
     }
-  }
-
-  // ── CANCEL: invoice payment failed ───────────────────────────────────────
-  if (event.type === 'invoice.payment_failed') {
-    const invoice = event.data.object as Stripe.Invoice
-    const customerId = invoice.customer as string
-    console.log('Payment failed for customer:', customerId)
-    // Don't immediately downgrade on first failure, Stripe will retry
-    // But log it so we can track
   }
 
   return NextResponse.json({ received: true })
