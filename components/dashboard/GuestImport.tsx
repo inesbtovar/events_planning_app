@@ -9,10 +9,11 @@ import * as ExcelJS from 'exceljs'
 type RawRow = Record<string, string>
 
 interface Props {
+  eventId: string
   onParsed: (headers: string[], rows: RawRow[]) => void
 }
 
-export default function GuestImport({ onParsed }: Props) {
+export default function GuestImport({ eventId, onParsed }: Props) {
   const inputRef = useRef<HTMLInputElement>(null)
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
