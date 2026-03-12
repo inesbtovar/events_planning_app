@@ -76,7 +76,7 @@ export default function LandingPage() {
           <span style={{ fontFamily: 'var(--font-display)', fontSize: '18px', fontWeight: '700', color: 'var(--text-primary)', letterSpacing: '-0.3px' }}>EventsDock</span>
         </div>
         <div className="flex items-center gap-1">
-          <Link href="/pricing" style={{ color: 'var(--text-secondary)', fontSize: '14px', padding: '8px 14px', borderRadius: '8px' }} className="hover:text-white transition-colors">Pricing</Link>
+          <Link href="/contact" style={{ color: 'var(--text-secondary)', fontSize: '14px', padding: '8px 14px', borderRadius: '8px' }} className="hover:text-white transition-colors">Help</Link>
           <Link href="/login" style={{ color: 'var(--text-secondary)', fontSize: '14px', padding: '8px 14px', borderRadius: '8px' }} className="hover:text-white transition-colors">Sign in</Link>
           <Link href="/register" className="btn-primary" style={{ padding: '9px 18px', borderRadius: '8px', fontSize: '14px', marginLeft: '4px' }}>
             Get started free
@@ -191,6 +191,7 @@ export default function LandingPage() {
             © {new Date().getFullYear()} EventsDock. Made for weddings, birthdays & everything in between.
           </p>
           <div className="flex items-center gap-6">
+            <Link href="/contact" style={{ color: 'var(--text-muted)', fontSize: '13px' }} className="hover:text-white transition-colors">Help</Link>
             <Link href="/pricing" style={{ color: 'var(--text-muted)', fontSize: '13px' }} className="hover:text-white transition-colors">Pricing</Link>
             <Link href="/login" style={{ color: 'var(--text-muted)', fontSize: '13px' }} className="hover:text-white transition-colors">Sign in</Link>
           </div>

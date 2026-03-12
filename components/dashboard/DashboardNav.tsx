@@ -159,7 +159,18 @@ export default function DashboardNav({ email, plan = 'free' }: Props) {
                 </Link>
               </div>
 
-              {/* Sign out */}
+                <Link
+                  href="/contact"
+                  onClick={() => setOpen(false)}
+                  style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '9px 12px', borderRadius: '8px', textDecoration: 'none', color: 'var(--text-secondary)', fontSize: '14px', transition: 'all 0.15s' }}
+                  onMouseEnter={e => { (e.currentTarget as HTMLAnchorElement).style.background = 'rgba(255,255,255,0.05)'; (e.currentTarget as HTMLAnchorElement).style.color = 'var(--text-primary)' }}
+                  onMouseLeave={e => { (e.currentTarget as HTMLAnchorElement).style.background = 'transparent'; (e.currentTarget as HTMLAnchorElement).style.color = 'var(--text-secondary)' }}
+                >
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                  Help & contact
+                </Link>
+
+
               <div style={{ padding: '6px', borderTop: '1px solid var(--border-subtle)' }}>
                 <button
                   onClick={handleSignOut}
