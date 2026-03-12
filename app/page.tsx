@@ -86,10 +86,10 @@ export default function LandingPage() {
 
       {/* Hero */}
       <section className="max-w-5xl mx-auto px-6 pt-28 pb-16 text-center" style={{ position: 'relative', zIndex: 1 }}>
-        <div className="animate-fade-up" style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', background: 'var(--teal-glow)', border: '1px solid var(--border)', borderRadius: '99px', padding: '5px 16px 5px 8px', fontSize: '13px', color: 'var(--teal)', marginBottom: '40px' }}>
+        {/*<div className="animate-fade-up" style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', background: 'var(--teal-glow)', border: '1px solid var(--border)', borderRadius: '99px', padding: '5px 16px 5px 8px', fontSize: '13px', color: 'var(--teal)', marginBottom: '40px' }}>
           <span style={{ background: 'var(--teal)', borderRadius: '99px', padding: '2px 8px', fontSize: '10px', fontWeight: '700', color: 'var(--navy)', letterSpacing: '0.05em' }}>NEW</span>
           Free during early access
-        </div>
+        </div>*/}
 
         <h1 className="animate-fade-up-1" style={{ fontFamily: 'var(--font-display)', fontSize: 'clamp(44px, 7vw, 80px)', fontWeight: '800', lineHeight: '1.05', letterSpacing: '-2.5px', marginBottom: '28px' }}>
           Events that leave<br />
