@@ -1,147 +1,145 @@
-'use client'
-// app/dashboard/billing/page.tsx
-import { useState, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
-import { createClient } from '@/lib/supabase/client'
+// app/dashboard/page.tsx
+import { createClient } from '@/lib/supabase/server'
+import { redirect } from 'next/navigation'
 import Link from 'next/link'
+import DashboardNav from '@/components/dashboard/DashboardNav'
 
-const PLAN_INFO: Record<string, { label: string; price: string; color: string }> = {
-  free:    { label: 'Free',    price: '€0/month',  color: 'var(--text-secondary)' },
-  starter: { label: 'Starter', price: '€9/month',  color: 'var(--teal)' },
-  pro:     { label: 'Pro',     price: '€19/month', color: 'var(--green)' },
-}
+export default async function DashboardPage() {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) redirect('/login')
 
-const PLAN_FEATURES: Record<string, string[]> = {
-  free:    ['1 active event', 'Up to 50 guests', 'RSVP tracking', 'Email invitations'],
-  starter: ['5 active events', 'Up to 200 guests', 'Guest import', 'Analytics dashboard'],
-  pro:     ['Unlimited events', 'Unlimited guests', 'Guest import', 'Analytics', 'Custom branding', 'Priority support'],
-}
+  const { data: events } = await supabase
+    .from('events')
+    .select('*, guests(count)')
+    .eq('user_id', user.id)
+    .order('created_at', { ascending: false })
 
-export default function BillingPage() {
-  const router = useRouter()
-  const [plan, setPlan] = useState<string>('free')
-  const [email, setEmail] = useState<string>('')
-  const [loading, setLoading] = useState(true)
-  const [portalLoading, setPortalLoading] = useState(false)
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('plan')
+    .eq('id', user.id)
+    .single()
 
-  useEffect(() => {
-    const supabase = createClient()
-    supabase.auth.getUser().then(async ({ data: { user } }) => {
-      if (!user) { router.push('/login'); return }
-      setEmail(user.email ?? '')
-      const { data } = await supabase.from('profiles').select('plan').eq('id', user.id).single()
-      if (data?.plan) setPlan(data.plan)
-      setLoading(false)
-    })
-  }, [router])
-
-  async function openBillingPortal() {
-    setPortalLoading(true)
-    try {
-      const res = await fetch('/api/stripe/portal', { method: 'POST' })
-      const data = await res.json()
-      if (data.url) window.location.href = data.url
-      else alert('Could not open billing portal. Please try again.')
-    } catch {
-      alert('Something went wrong.')
-    } finally {
-      setPortalLoading(false)
-    }
-  }
-
-  if (loading) {
-    return (
-      <div className="min-h-screen grid-bg flex items-center justify-center" style={{ background: 'var(--navy)' }}>
-        <p style={{ color: 'var(--text-secondary)', fontFamily: 'var(--font-body)' }}>Loading...</p>
-      </div>
-    )
-  }
-
-  const info = PLAN_INFO[plan] ?? PLAN_INFO.free
-  const features = PLAN_FEATURES[plan] ?? PLAN_FEATURES.free
+  const plan = profile?.plan ?? 'free'
+  const firstName = user.email?.split('@')[0] ?? 'there'
 
   return (
     <div className="min-h-screen grid-bg" style={{ background: 'var(--navy)', fontFamily: 'var(--font-body)' }}>
 
-      {/* Nav */}
-      <nav style={{ borderBottom: '1px solid var(--border-subtle)', backdropFilter: 'blur(20px)', background: 'rgba(11,22,40,0.9)', position: 'sticky', top: 0, zIndex: 50 }} className="px-6 py-4">
-        <div className="max-w-2xl mx-auto flex items-center justify-between">
-          <Link href="/dashboard" style={{ display: 'flex', alignItems: 'center', gap: '10px', textDecoration: 'none' }}>
-            <div style={{ background: 'linear-gradient(135deg, var(--teal), var(--green))', borderRadius: '8px', width: '28px', height: '28px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#0B1628" strokeWidth="2.5" strokeLinecap="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
-            </div>
-            <span style={{ fontFamily: 'var(--font-display)', fontWeight: '700', fontSize: '16px', color: 'var(--text-primary)' }}>EventsDock</span>
-          </Link>
-          <Link href="/dashboard" style={{ color: 'var(--text-secondary)', fontSize: '13px', textDecoration: 'none' }} className="hover:text-white transition-colors">
-            ← Back to dashboard
-          </Link>
-        </div>
-      </nav>
+      <DashboardNav email={user.email ?? ''} plan={plan} />
 
-      <div className="max-w-2xl mx-auto px-6 py-12">
-        <div className="animate-fade-up">
-          <h1 style={{ fontFamily: 'var(--font-display)', fontSize: '28px', fontWeight: '700', color: 'var(--text-primary)', letterSpacing: '-0.5px', marginBottom: '6px' }}>
-            Billing & Plan
-          </h1>
-          <p style={{ color: 'var(--text-secondary)', fontSize: '14px', marginBottom: '32px', fontWeight: '300' }}>{email}</p>
+      <main className="max-w-5xl mx-auto px-6 py-10">
 
-          {/* Current plan card */}
-          <div className="glass" style={{ borderRadius: '16px', padding: '28px', marginBottom: '16px' }}>
-            <p style={{ color: 'var(--text-muted)', fontSize: '12px', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '12px' }}>
-              Current plan
+        {/* Header */}
+        <div className="animate-fade-up flex items-start justify-between mb-10">
+          <div>
+            <h1 style={{ fontFamily: 'var(--font-display)', fontSize: '32px', fontWeight: '800', color: 'var(--text-primary)', letterSpacing: '-1px', marginBottom: '6px' }}>
+              Hello, {firstName} 👋
+            </h1>
+            <p style={{ color: 'var(--text-secondary)', fontSize: '14px', fontWeight: '300' }}>
+              {events && events.length > 0
+                ? `You have ${events.length} event${events.length === 1 ? '' : 's'}`
+                : 'Create your first event to get started'}
             </p>
-            <div className="flex items-center gap-3 mb-6">
-              <span style={{
-                background: 'var(--teal-glow)', border: '1px solid var(--border)',
-                borderRadius: '99px', padding: '4px 14px',
-                fontSize: '13px', fontWeight: '600', color: info.color,
-                fontFamily: 'var(--font-display)',
-              }}>
-                {info.label}
-              </span>
-              <span style={{ color: 'var(--text-primary)', fontSize: '22px', fontWeight: '700', fontFamily: 'var(--font-display)' }}>
-                {info.price}
-              </span>
-            </div>
-
-            <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '10px' }}>
-              {features.map(f => (
-                <li key={f} style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '14px', color: 'var(--text-secondary)', fontWeight: '300' }}>
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--teal)" strokeWidth="2.5" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg>
-                  {f}
-                </li>
-              ))}
-            </ul>
           </div>
-
-          {/* Actions */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-            {plan === 'free' ? (
-              <Link href="/pricing" className="btn-primary" style={{ padding: '13px', borderRadius: '10px', fontSize: '14px', textAlign: 'center', textDecoration: 'none', display: 'block' }}>
-                Upgrade your plan
-              </Link>
-            ) : (
-              <>
-                <Link href="/pricing" className="btn-primary" style={{ padding: '13px', borderRadius: '10px', fontSize: '14px', textAlign: 'center', textDecoration: 'none', display: 'block' }}>
-                  Change plan
-                </Link>
-                <button
-                  onClick={openBillingPortal}
-                  disabled={portalLoading}
-                  className="btn-ghost"
-                  style={{ padding: '13px', borderRadius: '10px', fontSize: '14px', width: '100%', opacity: portalLoading ? 0.6 : 1 }}
-                >
-                  {portalLoading ? 'Opening...' : 'Manage billing / Cancel subscription'}
-                </button>
-              </>
-            )}
-          </div>
-
-          <p style={{ color: 'var(--text-muted)', fontSize: '12px', marginTop: '16px', textAlign: 'center' }}>
-            Billing is securely managed by Stripe. Your card details are never stored on our servers.
-          </p>
+          <Link href="/dashboard/new" className="btn-primary" style={{
+            padding: '10px 20px', borderRadius: '9px', fontSize: '14px',
+            display: 'inline-flex', alignItems: 'center', gap: '8px', textDecoration: 'none',
+          }}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            New event
+          </Link>
         </div>
-      </div>
+
+        {/* Events grid */}
+        {events && events.length > 0 ? (
+          <div className="grid sm:grid-cols-2 gap-4">
+            {events.map((event, i) => {
+              const guestCount = (event.guests as any)?.[0]?.count ?? 0
+              return (
+                <Link key={event.id} href={`/dashboard/${event.id}`}
+                  className={`glass animate-fade-up-delay-${Math.min(i + 1, 4)}`}
+                  style={{
+                    borderRadius: '16px', padding: '24px', display: 'block',
+                    textDecoration: 'none', transition: 'border-color 0.2s, transform 0.2s',
+                  }}
+                  onMouseEnter={e => { (e.currentTarget as HTMLAnchorElement).style.borderColor = 'rgba(10,191,188,0.35)'; (e.currentTarget as HTMLAnchorElement).style.transform = 'translateY(-2px)' }}
+                  onMouseLeave={e => { (e.currentTarget as HTMLAnchorElement).style.borderColor = 'var(--border)'; (e.currentTarget as HTMLAnchorElement).style.transform = 'translateY(0)' }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '12px' }}>
+                    <div style={{ minWidth: 0 }}>
+                      <h3 style={{ fontFamily: 'var(--font-display)', fontWeight: '700', color: 'var(--text-primary)', fontSize: '17px', marginBottom: '6px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {event.name}
+                      </h3>
+                      {event.date && (
+                        <p style={{ color: 'var(--text-secondary)', fontSize: '13px', marginBottom: '2px', fontWeight: '300' }}>
+                          {new Date(event.date).toLocaleDateString('pt-PT', { day: 'numeric', month: 'long', year: 'numeric' })}
+                        </p>
+                      )}
+                      {event.location && (
+                        <p style={{ color: 'var(--text-muted)', fontSize: '13px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          {event.location}
+                        </p>
+                      )}
+                    </div>
+                    <span style={{
+                      flexShrink: 0, fontSize: '11px', padding: '4px 10px', borderRadius: '99px',
+                      fontWeight: '600', letterSpacing: '0.05em', textTransform: 'uppercase',
+                      background: event.is_published ? 'rgba(6,214,160,0.15)' : 'rgba(10,191,188,0.1)',
+                      color: event.is_published ? 'var(--green)' : 'var(--teal)',
+                      border: `1px solid ${event.is_published ? 'rgba(6,214,160,0.3)' : 'var(--border)'}`,
+                    }}>
+                      {event.is_published ? 'Live' : 'Draft'}
+                    </span>
+                  </div>
+
+                  <div style={{ borderTop: '1px solid var(--border-subtle)', marginTop: '16px', paddingTop: '16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--text-muted)', fontSize: '13px' }}>
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                        <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/>
+                        <path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+                      </svg>
+                      {guestCount} {guestCount === 1 ? 'guest' : 'guests'}
+                    </div>
+                    <span style={{ color: 'var(--text-muted)', fontSize: '12px', textTransform: 'capitalize' }}>
+                      {event.template} template
+                    </span>
+                  </div>
+                </Link>
+              )
+            })}
+          </div>
+        ) : (
+          <div className="animate-fade-up-delay-1" style={{
+            border: '1px dashed var(--border)', borderRadius: '20px',
+            padding: '64px 32px', textAlign: 'center',
+          }}>
+            <div style={{
+              width: '56px', height: '56px', background: 'var(--teal-glow)',
+              borderRadius: '16px', display: 'flex', alignItems: 'center', justifyContent: 'center',
+              margin: '0 auto 20px',
+            }}>
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--teal)" strokeWidth="1.8" strokeLinecap="round">
+                <rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/>
+                <line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
+              </svg>
+            </div>
+            <h3 style={{ fontFamily: 'var(--font-display)', color: 'var(--text-primary)', fontWeight: '700', fontSize: '18px', marginBottom: '8px' }}>
+              No events yet
+            </h3>
+            <p style={{ color: 'var(--text-secondary)', fontSize: '14px', marginBottom: '28px', fontWeight: '300' }}>
+              Create your first event and start inviting guests
+            </p>
+            <Link href="/dashboard/new" className="btn-primary" style={{
+              padding: '12px 28px', borderRadius: '9px', fontSize: '14px',
+              display: 'inline-block', textDecoration: 'none',
+            }}>
+              Create event
+            </Link>
+          </div>
+        )}
+      </main>
     </div>
   )
 }
