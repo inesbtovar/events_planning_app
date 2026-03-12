@@ -18,6 +18,34 @@ function getPlanFromPriceId(priceId: string): string {
   return 'free'
 }
 
+async function downgradeByCustomerId(customerId: string, reason: string) {
+  console.log(`Downgrade attempt - customer: ${customerId} - reason: ${reason}`)
+
+  const { data: profile, error } = await supabase
+    .from('profiles')
+    .select('id, plan')
+    .eq('stripe_customer_id', customerId)
+    .single()
+
+  if (error || !profile) {
+    console.error(`No profile found for customer ${customerId}:`, error?.message)
+    return false
+  }
+
+  const { error: updateError } = await supabase
+    .from('profiles')
+    .update({ plan: 'free', stripe_subscription_id: null })
+    .eq('id', profile.id)
+
+  if (updateError) {
+    console.error(`Failed to update profile ${profile.id}:`, updateError.message)
+    return false
+  }
+
+  console.log(`✓ Downgraded profile ${profile.id} from ${profile.plan} to free`)
+  return true
+}
+
 export async function POST(request: NextRequest) {
   let event: Stripe.Event
 
@@ -29,127 +57,76 @@ export async function POST(request: NextRequest) {
       try {
         event = stripe.webhooks.constructEvent(body, signature, process.env.STRIPE_WEBHOOK_SECRET)
       } catch (sigErr) {
-        console.error('Signature verification failed, parsing raw body:', sigErr)
+        console.error('Sig failed, using raw body:', sigErr)
         event = JSON.parse(body) as Stripe.Event
       }
     } else {
       event = JSON.parse(body) as Stripe.Event
     }
   } catch (err) {
-    console.error('Webhook parse error:', err)
+    console.error('Webhook body error:', err)
     return NextResponse.json({ error: 'Bad request' }, { status: 400 })
   }
 
-  console.log('=== WEBHOOK RECEIVED:', event.type, '===')
+  console.log(`\n=== WEBHOOK: ${event.type} ===`)
 
-  // ── Subscription purchased / upgraded ──────────────────────────────────────
+  // ── UPGRADE: checkout completed ──────────────────────────────────────────
   if (event.type === 'checkout.session.completed') {
     const session = event.data.object as Stripe.Checkout.Session
     const userId = session.metadata?.user_id
+    const customerId = session.customer as string
+    const subscriptionId = session.subscription as string
+
+    console.log('checkout - userId:', userId, 'customer:', customerId, 'sub:', subscriptionId)
 
     if (!userId) {
-      console.error('No user_id in metadata')
+      console.error('Missing user_id in metadata')
       return NextResponse.json({ received: true })
     }
 
-    const subscriptionId = session.subscription as string
     let plan = 'starter'
-
     try {
       const sub = await stripe.subscriptions.retrieve(subscriptionId)
-      const priceId = sub.items.data[0].price.id
-      plan = getPlanFromPriceId(priceId)
-    } catch (err) {
-      console.error('Could not fetch subscription:', err)
+      plan = getPlanFromPriceId(sub.items.data[0].price.id)
+      console.log('plan resolved:', plan)
+    } catch (e) {
+      console.error('Could not retrieve subscription:', e)
     }
 
-    const { data: existing } = await supabase
-      .from('profiles').select('id').eq('id', userId).single()
+    // Upsert profile - make sure stripe_customer_id is always saved
+    const { error } = await supabase.from('profiles').upsert({
+      id: userId,
+      plan,
+      stripe_customer_id: customerId,
+      stripe_subscription_id: subscriptionId,
+    }, { onConflict: 'id' })
 
-    if (!existing) {
-      const { error } = await supabase.from('profiles').insert({
-        id: userId, plan,
-        stripe_customer_id: session.customer as string,
-        stripe_subscription_id: subscriptionId,
-      })
-      if (error) console.error('Insert error:', error)
-    } else {
-      const { error } = await supabase.from('profiles').update({
-        plan,
-        stripe_customer_id: session.customer as string,
-        stripe_subscription_id: subscriptionId,
-      }).eq('id', userId)
-      if (error) console.error('Update error:', error)
-    }
-
-    console.log(`✓ Upgraded user ${userId} to ${plan}`)
+    if (error) console.error('Upsert error:', error.message)
+    else console.log(`✓ Upserted user ${userId} → plan: ${plan}, customer: ${customerId}`)
   }
 
-  // ── Subscription cancelled ─────────────────────────────────────────────────
+  // ── CANCEL: subscription deleted ─────────────────────────────────────────
   if (event.type === 'customer.subscription.deleted') {
-    const subscription = event.data.object as Stripe.Subscription
-    const customerId = subscription.customer as string
+    const sub = event.data.object as Stripe.Subscription
+    await downgradeByCustomerId(sub.customer as string, `subscription deleted, status: ${sub.status}`)
+  }
 
-    console.log('Cancellation - customer:', customerId, 'status:', subscription.status)
-
-    const { data: profile, error: lookupError } = await supabase
-      .from('profiles')
-      .select('id, plan')
-      .eq('stripe_customer_id', customerId)
-      .single()
-
-    if (lookupError || !profile) {
-      console.error('No profile found for customer:', customerId, lookupError)
-      return NextResponse.json({ received: true })
-    }
-
-    console.log('Found profile:', profile.id, 'current plan:', profile.plan)
-
-    const { error: updateError } = await supabase
-      .from('profiles')
-      .update({ plan: 'free', stripe_subscription_id: null })
-      .eq('id', profile.id)
-
-    if (updateError) {
-      console.error('Failed to downgrade:', updateError)
-    } else {
-      console.log(`✓ Downgraded user ${profile.id} from ${profile.plan} to free`)
+  // ── CANCEL: subscription updated to bad status ────────────────────────────
+  if (event.type === 'customer.subscription.updated') {
+    const sub = event.data.object as Stripe.Subscription
+    console.log('subscription.updated - status:', sub.status)
+    if (['canceled', 'unpaid', 'past_due', 'incomplete_expired'].includes(sub.status)) {
+      await downgradeByCustomerId(sub.customer as string, `status changed to: ${sub.status}`)
     }
   }
 
-  // ── Subscription updated (catches cancel-at-period-end becoming active cancel) ──
-  if (event.type === 'customer.subscription.updated') {
-    const subscription = event.data.object as Stripe.Subscription
-    const previousAttributes = (event.data as any).previous_attributes
-
-    console.log('Subscription updated - status:', subscription.status, 'previous:', JSON.stringify(previousAttributes))
-
-    // Only downgrade if status is now canceled, unpaid, or past_due
-    if (['canceled', 'unpaid', 'past_due'].includes(subscription.status)) {
-      const customerId = subscription.customer as string
-
-      const { data: profile, error: lookupError } = await supabase
-        .from('profiles')
-        .select('id, plan')
-        .eq('stripe_customer_id', customerId)
-        .single()
-
-      if (lookupError || !profile) {
-        console.error('No profile for customer on update:', customerId)
-        return NextResponse.json({ received: true })
-      }
-
-      const { error: updateError } = await supabase
-        .from('profiles')
-        .update({ plan: 'free', stripe_subscription_id: null })
-        .eq('id', profile.id)
-
-      if (updateError) {
-        console.error('Failed to downgrade on update:', updateError)
-      } else {
-        console.log(`✓ Downgraded user ${profile.id} to free due to subscription status: ${subscription.status}`)
-      }
-    }
+  // ── CANCEL: invoice payment failed ───────────────────────────────────────
+  if (event.type === 'invoice.payment_failed') {
+    const invoice = event.data.object as Stripe.Invoice
+    const customerId = invoice.customer as string
+    console.log('Payment failed for customer:', customerId)
+    // Don't immediately downgrade on first failure, Stripe will retry
+    // But log it so we can track
   }
 
   return NextResponse.json({ received: true })
