@@ -23,6 +23,7 @@ export default function BillingPage() {
   const [email, setEmail] = useState<string>('')
   const [loading, setLoading] = useState(true)
   const [portalLoading, setPortalLoading] = useState(false)
+  const [cancelDate, setCancelDate] = useState<string | null>(null)
 
   // Delete account state
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
@@ -36,14 +37,26 @@ export default function BillingPage() {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) { router.push('/login'); return }
       setEmail(user.email ?? '')
-      const { data } = await supabase.from('profiles').select('plan').eq('id', user.id).single()
+      const { data } = await supabase
+        .from('profiles')
+        .select('plan, stripe_subscription_id')
+        .eq('id', user.id)
+        .single()
       if (data?.plan) setPlan(data.plan)
+
+      // Check if subscription is set to cancel at period end
+      if (data?.stripe_subscription_id) {
+        try {
+          const res = await fetch('/api/billing/status')
+          const json = await res.json()
+          if (json.cancel_at) setCancelDate(json.cancel_at)
+        } catch {}
+      }
+
       setLoading(false)
     }
 
     fetchPlan()
-
-    // Refetch when user returns from Stripe portal
     window.addEventListener('focus', fetchPlan)
     return () => window.removeEventListener('focus', fetchPlan)
   }, [router])
@@ -122,7 +135,7 @@ export default function BillingPage() {
           <p style={{ color: 'var(--text-muted)', fontSize: '12px', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '12px' }}>
             Current plan
           </p>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '20px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: cancelDate ? '12px' : '20px' }}>
             <span style={{
               background: 'var(--teal-glow)', border: '1px solid var(--border)',
               borderRadius: '99px', padding: '4px 14px',
@@ -135,6 +148,19 @@ export default function BillingPage() {
               {info.price}
             </span>
           </div>
+
+          {cancelDate && (
+            <div style={{
+              background: 'rgba(251,146,60,0.08)', border: '1px solid rgba(251,146,60,0.25)',
+              borderRadius: '10px', padding: '12px 16px', marginBottom: '20px',
+              display: 'flex', alignItems: 'center', gap: '10px',
+            }}>
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#fb923c" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+              <p style={{ color: '#fb923c', fontSize: '13px', margin: 0, lineHeight: '1.5' }}>
+                Your plan is cancelled and will revert to <strong>Free</strong> on <strong>{new Date(cancelDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })}</strong>. You keep full access until then.
+              </p>
+            </div>
+          )}
 
           <ul style={{ listStyle: 'none', padding: 0, margin: '0 0 24px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
             {features.map(f => (
