@@ -1,8 +1,32 @@
 // middleware.ts
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
+import { timingSafeEqual } from 'crypto'
+
+function checkAdminSecret(request: NextRequest): boolean {
+  // Accept secret from either query param or header
+  const fromQuery = request.nextUrl.searchParams.get('key') || ''
+  const fromHeader = request.headers.get('x-admin-secret') || ''
+  const incoming = fromQuery || fromHeader
+  const expected = process.env.ADMIN_SECRET || ''
+
+  if (!incoming || !expected) return false
+  try {
+    const a = Buffer.from(incoming.padEnd(64).slice(0, 64))
+    const b = Buffer.from(expected.padEnd(64).slice(0, 64))
+    return incoming.length === expected.length && timingSafeEqual(a, b)
+  } catch { return false }
+}
 
 export async function middleware(request: NextRequest) {
+  // ── Block /admin/* entirely unless correct secret is provided ─────────────
+  // This runs BEFORE the page renders — no one sees the UI without the secret
+  if (request.nextUrl.pathname.startsWith('/admin')) {
+    if (!checkAdminSecret(request)) {
+      return new NextResponse('Not found', { status: 404 })
+    }
+  }
+
   let supabaseResponse = NextResponse.next({ request })
 
   const supabase = createServerClient(
@@ -39,15 +63,12 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(new URL('/dashboard', request.url))
   }
 
-  // ── Security headers ──────────────────────────────────────────────────────
+  // ── Security headers ───────────────────────────────────────────────────────
   supabaseResponse.headers.set('X-Frame-Options', 'DENY')
   supabaseResponse.headers.set('X-Content-Type-Options', 'nosniff')
   supabaseResponse.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin')
   supabaseResponse.headers.set('Permissions-Policy', 'camera=(), microphone=(), geolocation=()')
-  supabaseResponse.headers.set(
-    'Strict-Transport-Security',
-    'max-age=63072000; includeSubDomains; preload'
-  )
+  supabaseResponse.headers.set('Strict-Transport-Security', 'max-age=63072000; includeSubDomains; preload')
   supabaseResponse.headers.set(
     'Content-Security-Policy',
     [
