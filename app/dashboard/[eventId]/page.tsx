@@ -123,6 +123,14 @@ export default async function EventPage({ params }: Props) {
               </svg>
               Settings
             </Link>
+            <Link href={`/dashboard/${event.id}/analytics`}
+              style={{ border: '1px solid #EDE8E0', background: 'white', color: '#7A6652', padding: '8px 16px', borderRadius: '99px', fontSize: '13px', display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+              className="hover:border-stone-400 transition-colors">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                <line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/>
+              </svg>
+              Analytics
+            </Link>
           </div>
         </div>
 
