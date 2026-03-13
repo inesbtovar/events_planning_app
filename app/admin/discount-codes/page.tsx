@@ -2,7 +2,7 @@
 // app/admin/discount-codes/page.tsx
 // Access is fully blocked by middleware — this page only renders if the
 // correct ADMIN_SECRET was provided in the URL query param
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
 
 type Code = {
@@ -16,7 +16,7 @@ type Code = {
   created_at: string
 }
 
-export default function AdminDiscountCodesPage() {
+function AdminDiscountCodesInner() {
   const searchParams = useSearchParams()
   // Secret comes from URL: /admin/discount-codes?key=YOUR_SECRET
   // Never stored in NEXT_PUBLIC_ env vars — only validated server-side
@@ -265,5 +265,13 @@ export default function AdminDiscountCodesPage() {
         </div>
       </div>
     </div>
+  )
+}
+
+export default function AdminDiscountCodesPage() {
+  return (
+    <Suspense fallback={<div style={{ background: 'var(--navy)', minHeight: '100vh' }} />}>
+      <AdminDiscountCodesInner />
+    </Suspense>
   )
 }
