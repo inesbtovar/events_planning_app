@@ -16,13 +16,13 @@ export default function TemplateModern({ event }: { event: Event }) {
   const accent = config.accentColor || '#FF3B00'
 
   const eventDate = event.date
-    ? new Date(event.date).toLocaleDateString('pt-PT', { day: 'numeric', month: 'long', year: 'numeric' })
+    ? new Date(event.date).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })
     : null
   const eventDay = event.date
-    ? new Date(event.date).toLocaleDateString('pt-PT', { weekday: 'long' })
+    ? new Date(event.date).toLocaleDateString('en-GB', { weekday: 'long' })
     : null
   const eventTime = event.date
-    ? new Date(event.date).toLocaleTimeString('pt-PT', { hour: '2-digit', minute: '2-digit' })
+    ? new Date(event.date).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })
     : null
 
   // Split event name for dramatic stagger

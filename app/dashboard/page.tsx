@@ -72,7 +72,7 @@ export default async function DashboardPage() {
                       </h3>
                       {event.date && (
                         <p style={{ color: 'var(--text-secondary)', fontSize: '13px', marginBottom: '2px', fontWeight: '300' }}>
-                          {new Date(event.date).toLocaleDateString('pt-PT', { day: 'numeric', month: 'long', year: 'numeric' })}
+                          {new Date(event.date).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })}
                         </p>
                       )}
                       {event.location && (

@@ -244,7 +244,7 @@ export default function GuestTable({ guests: initial, eventSlug, appUrl }: Props
                   {/* Responded */}
                   <td style={{ padding: '14px 20px', color: '#B0A090', fontSize: '12px' }}>
                     {guest.responded_at
-                      ? new Date(guest.responded_at).toLocaleDateString('pt-PT', { day: 'numeric', month: 'short' })
+                      ? new Date(guest.responded_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })
                       : '—'}
                   </td>
 

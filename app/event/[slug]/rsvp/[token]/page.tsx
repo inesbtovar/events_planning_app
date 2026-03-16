@@ -86,7 +86,7 @@ export default function RSVPPage() {
 
   const event = guest.events
   const eventDate = event?.date
-    ? new Date(event.date).toLocaleDateString('pt-PT', {
+    ? new Date(event.date).toLocaleDateString('en-GB', {
         weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',
       })
     : null

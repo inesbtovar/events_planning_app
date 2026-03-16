@@ -20,12 +20,12 @@ export default function TemplateElegant({ event }: { event: Event }) {
   const config = event.template_config || {}
   const gold = config.accentColor || '#C9A84C'
   const eventDate = event.date
-    ? new Date(event.date).toLocaleDateString('pt-PT', {
+    ? new Date(event.date).toLocaleDateString('en-GB', {
         weekday: 'long', day: 'numeric', month: 'long', year: 'numeric'
       })
     : null
   const eventTime = event.date
-    ? new Date(event.date).toLocaleTimeString('pt-PT', { hour: '2-digit', minute: '2-digit' })
+    ? new Date(event.date).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })
     : null
 
   return (

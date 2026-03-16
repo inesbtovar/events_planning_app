@@ -20,7 +20,7 @@ export default function EventCard({ event }: Props) {
           <h3 className="font-semibold text-stone-900 truncate">{event.name}</h3>
           {event.date && (
             <p className="text-stone-500 text-sm mt-1">
-              📅 {formatDate(event.date, 'pt-PT', {
+              📅 {formatDate(event.date, 'en-GB', {
                 day: 'numeric', month: 'long', year: 'numeric'
               })}
             </p>
