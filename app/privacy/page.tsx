@@ -7,7 +7,7 @@ export const metadata = {
 }
 
 const LAST_UPDATED = 'March 2026'
-const CONTACT_EMAIL = 'privacy@eventsdock.com'
+const CONTACT_EMAIL = 'eventsdock2026@gmail.com'
 
 export default function PrivacyPage() {
   return (
