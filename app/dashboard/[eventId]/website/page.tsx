@@ -1,6 +1,6 @@
 'use client'
 // app/dashboard/[eventId]/website/page.tsx
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useParams } from 'next/navigation'
 import Link from 'next/link'
@@ -33,6 +33,18 @@ export default function WebsitePage() {
   const [config, setConfig]         = useState<any>({})
   const [saving, setSaving]         = useState(false)
   const [publishing, setPublishing] = useState(false)
+  const previewRef = useRef<HTMLDivElement>(null)
+  const [scale, setScale] = useState(0.626)
+
+  useEffect(() => {
+    if (!previewRef.current) return
+    const obs = new ResizeObserver(entries => {
+      const w = entries[0].contentRect.width
+      setScale(w / 860)
+    })
+    obs.observe(previewRef.current)
+    return () => obs.disconnect()
+  }, [])
 
   useEffect(() => {
     if (!eventId) return
@@ -45,6 +57,22 @@ export default function WebsitePage() {
         }
       })
   }, [eventId])
+
+  // Calculate scale so preview fills its container exactly
+  useEffect(() => {
+    function updateScale() {
+      const shell = document.getElementById('preview-shell')
+      const inner = document.getElementById('preview-inner')
+      if (!shell || !inner) return
+      const containerW = shell.getBoundingClientRect().width
+      const scale = containerW / 1280
+      inner.style.setProperty('--preview-scale', String(scale))
+      inner.style.transform = `scale(${scale})`
+    }
+    updateScale()
+    window.addEventListener('resize', updateScale)
+    return () => window.removeEventListener('resize', updateScale)
+  }, [template])
 
   async function save() {
     setSaving(true)
@@ -227,12 +255,12 @@ export default function WebsitePage() {
             </div>
 
             {/* Scaled template preview */}
-            <div style={{ height: '580px', overflow: 'hidden', position: 'relative', background: '#fff' }}>
+            <div ref={previewRef} style={{ height: '580px', overflow: 'hidden', position: 'relative', background: '#fff' }}>
               <div style={{
                 position: 'absolute', top: 0, left: 0,
-                width: '1200px',
+                width: '860px',
                 transformOrigin: 'top left',
-                transform: 'scale(0.42)',
+                transform: `scale(${scale})`,
                 pointerEvents: 'none',
               }}>
                 <PreviewComponent event={previewEvent} />
