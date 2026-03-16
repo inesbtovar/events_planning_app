@@ -5,40 +5,33 @@ import { createClient } from '@/lib/supabase/client'
 import { useParams } from 'next/navigation'
 import Link from 'next/link'
 import toast from 'react-hot-toast'
+import dynamic from 'next/dynamic'
+
+const TemplateElegant = dynamic(() => import('@/components/templates/TemplateElegant'), { ssr: false })
+const TemplateRustic  = dynamic(() => import('@/components/templates/TemplateRustic'),  { ssr: false })
+const TemplateModern  = dynamic(() => import('@/components/templates/TemplateModern'),  { ssr: false })
 
 const TEMPLATES = [
-  {
-    id: 'elegant',
-    name: 'Elegant',
-    description: 'White & gold, timeless serif',
-    color: '#B8860B',
-    bg: '#FAF9F7',
-  },
-  {
-    id: 'rustic',
-    name: 'Rustic',
-    description: 'Warm earthy tones, vintage feel',
-    color: '#78564E',
-    bg: '#F5F0E8',
-  },
-  {
-    id: 'modern',
-    name: 'Modern',
-    description: 'Bold, black & white, graphic',
-    color: '#111111',
-    bg: '#F0F0F0',
-  },
+  { id: 'elegant', name: 'Elegant',  description: 'Luxury serif, gold accents',   color: '#C9A84C', bg: '#FAF7F2' },
+  { id: 'rustic',  name: 'Rustic',   description: 'Warm, botanical, countryside', color: '#8B5E3C', bg: '#F5EFE3' },
+  { id: 'modern',  name: 'Modern',   description: 'Bold, editorial, graphic',     color: '#FF3B00', bg: '#0A0A0A' },
 ]
+
+const TEMPLATE_COMPONENTS: Record<string, React.ComponentType<any>> = {
+  elegant: TemplateElegant,
+  rustic:  TemplateRustic,
+  modern:  TemplateModern,
+}
 
 export default function WebsitePage() {
   const params = useParams()
   const eventId = params.eventId as string
   const supabase = createClient()
 
-  const [event, setEvent]       = useState<any>(null)
-  const [template, setTemplate] = useState('elegant')
-  const [config, setConfig]     = useState<any>({})
-  const [saving, setSaving]     = useState(false)
+  const [event, setEvent]           = useState<any>(null)
+  const [template, setTemplate]     = useState('elegant')
+  const [config, setConfig]         = useState<any>({})
+  const [saving, setSaving]         = useState(false)
   const [publishing, setPublishing] = useState(false)
 
   useEffect(() => {
@@ -56,11 +49,9 @@ export default function WebsitePage() {
   async function save() {
     setSaving(true)
     const { error } = await supabase
-      .from('events')
-      .update({ template, template_config: config })
-      .eq('id', eventId)
+      .from('events').update({ template, template_config: config }).eq('id', eventId)
     if (error) toast.error(error.message)
-    else toast.success('Changes saved')
+    else { toast.success('Changes saved'); setEvent((e: any) => ({ ...e, template, template_config: config })) }
     setSaving(false)
   }
 
@@ -68,104 +59,102 @@ export default function WebsitePage() {
     setPublishing(true)
     const newState = !event.is_published
     const { error } = await supabase
-      .from('events')
-      .update({ is_published: newState, template, template_config: config })
-      .eq('id', eventId)
+      .from('events').update({ is_published: newState, template, template_config: config }).eq('id', eventId)
     if (error) toast.error(error.message)
-    else {
-      setEvent({ ...event, is_published: newState })
-      toast.success(newState ? 'Event is now live!' : 'Event unpublished')
-    }
+    else { setEvent({ ...event, is_published: newState, template, template_config: config }); toast.success(newState ? 'Event is now live! 🎉' : 'Event unpublished') }
     setPublishing(false)
   }
 
   if (!event) return (
-    <div className="min-h-screen flex items-center justify-center" style={{ background: '#FDFAF6' }}>
-      <div style={{ width: '24px', height: '24px', border: '2px solid #EDE8E0', borderTopColor: '#C47A3A', borderRadius: '99px' }}
-        className="animate-spin" />
+    <div className="min-h-screen grid-bg flex items-center justify-center" style={{ background: 'var(--navy)' }}>
+      <div style={{ width: '24px', height: '24px', border: '2px solid var(--border)', borderTopColor: 'var(--teal)', borderRadius: '99px' }} className="animate-spin" />
     </div>
   )
 
   const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
   const publicUrl = `${appUrl}/event/${event.slug}`
 
+  // Merge saved event data with current editing state for live preview
+  const previewEvent = {
+    ...event,
+    template,
+    template_config: config,
+  }
+
+  const PreviewComponent = TEMPLATE_COMPONENTS[template] ?? TemplateElegant
+
   return (
-    <div className="min-h-screen" style={{ background: '#FDFAF6', fontFamily: 'system-ui, sans-serif' }}>
+    <div className="min-h-screen grid-bg" style={{ background: 'var(--navy)', fontFamily: 'var(--font-body)' }}>
 
       {/* Navbar */}
-      <nav style={{ background: 'white', borderBottom: '1px solid #EDE8E0' }} className="px-6 py-4">
-        <div className="max-w-5xl mx-auto flex items-center gap-3">
-          <Link href={`/dashboard/${eventId}`} style={{ color: '#A08060', fontSize: '14px' }}
-            className="hover:opacity-70 transition-opacity flex items-center gap-1.5">
+      <nav style={{ borderBottom: '1px solid var(--border-subtle)', background: 'rgba(11,22,40,0.9)', backdropFilter: 'blur(20px)' }} className="px-6 py-4">
+        <div className="max-w-6xl mx-auto flex items-center gap-3">
+          <Link href={`/dashboard/${eventId}`} style={{ color: 'var(--text-muted)', fontSize: '13px', display: 'flex', alignItems: 'center', gap: '6px', textDecoration: 'none' }}
+            className="hover:opacity-70 transition-opacity">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
               <polyline points="15 18 9 12 15 6"/>
             </svg>
-            Back
+            {event.name}
           </Link>
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#D0C4B4" strokeWidth="2"><polyline points="9 18 15 12 9 6"/></svg>
-          <span style={{ color: '#2D2016', fontWeight: '600', fontSize: '14px' }}>Edit Website</span>
-          <div className="ml-auto flex gap-2">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--border)" strokeWidth="2"><polyline points="9 18 15 12 9 6"/></svg>
+          <span style={{ color: 'var(--text-primary)', fontWeight: '600', fontSize: '14px' }}>Edit template</span>
+          <div className="ml-auto flex items-center gap-2">
+            {event.is_published && (
+              <a href={publicUrl} target="_blank" rel="noopener noreferrer"
+                style={{ border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-secondary)', padding: '7px 14px', borderRadius: '99px', fontSize: '13px', display: 'flex', alignItems: 'center', gap: '6px', textDecoration: 'none' }}>
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                  <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/>
+                </svg>
+                View live
+              </a>
+            )}
             <button onClick={save} disabled={saving}
-              style={{ border: '1px solid #EDE8E0', background: 'white', color: '#7A6652', padding: '8px 18px', borderRadius: '99px', fontSize: '13px', cursor: 'pointer' }}
-              className="hover:border-stone-400 transition-colors disabled:opacity-50">
+              style={{ border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-secondary)', padding: '7px 16px', borderRadius: '99px', fontSize: '13px', cursor: 'pointer', opacity: saving ? 0.6 : 1, fontFamily: 'var(--font-body)' }}>
               {saving ? 'Saving...' : 'Save'}
             </button>
-            <button onClick={togglePublish} disabled={publishing}
-              style={{
-                background: event.is_published ? '#FFEBEE' : '#2D2016',
-                color: event.is_published ? '#C62828' : 'white',
-                border: 'none',
-                padding: '8px 18px',
-                borderRadius: '99px',
-                fontSize: '13px',
-                cursor: 'pointer',
-                fontWeight: '500',
-              }}
-              className="hover:opacity-80 transition-opacity disabled:opacity-50">
+            <button onClick={togglePublish} disabled={publishing} style={{
+              background: event.is_published ? 'rgba(239,68,68,0.15)' : 'linear-gradient(135deg, var(--teal), var(--green))',
+              color: event.is_published ? '#f87171' : '#0B1628',
+              border: event.is_published ? '1px solid rgba(239,68,68,0.3)' : 'none',
+              padding: '7px 16px', borderRadius: '99px', fontSize: '13px', cursor: 'pointer',
+              fontWeight: '600', opacity: publishing ? 0.6 : 1, fontFamily: 'var(--font-body)',
+            }}>
               {publishing ? '...' : event.is_published ? 'Unpublish' : 'Publish'}
             </button>
           </div>
         </div>
       </nav>
 
-      <main className="max-w-5xl mx-auto px-6 py-8 grid sm:grid-cols-5 gap-8">
+      <main className="max-w-6xl mx-auto px-6 py-8" style={{ display: 'grid', gridTemplateColumns: '280px 1fr', gap: '24px', alignItems: 'start' }}>
 
         {/* Left controls */}
-        <div className="sm:col-span-2 space-y-5">
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
 
           {/* Template picker */}
-          <div style={{ background: 'white', border: '1px solid #EDE8E0', borderRadius: '20px', padding: '20px' }}>
-            <h2 style={{ fontWeight: '600', color: '#2D2016', fontSize: '14px', marginBottom: '14px' }}>Template</h2>
-            <div className="space-y-2">
+          <div className="glass" style={{ borderRadius: '16px', padding: '20px' }}>
+            <h2 style={{ fontFamily: 'var(--font-display)', fontWeight: '700', color: 'var(--text-primary)', fontSize: '14px', marginBottom: '14px' }}>Template</h2>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
               {TEMPLATES.map(t => (
-                <button key={t.id} onClick={() => setTemplate(t.id)}
-                  style={{
-                    width: '100%',
-                    textAlign: 'left',
-                    padding: '14px',
-                    borderRadius: '14px',
-                    border: template === t.id ? `2px solid ${t.color}` : '2px solid transparent',
-                    background: template === t.id ? t.bg : '#FDFAF6',
-                    cursor: 'pointer',
-                    transition: 'all 0.15s',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '12px',
-                  }}>
-                  <div style={{
-                    width: '32px', height: '32px', borderRadius: '8px',
-                    background: t.color, flexShrink: 0,
-                  }} />
-                  <div>
-                    <p style={{ fontWeight: '600', color: '#2D2016', fontSize: '13px', marginBottom: '2px' }}>{t.name}</p>
-                    <p style={{ color: '#A08060', fontSize: '12px' }}>{t.description}</p>
+                <button key={t.id} onClick={() => setTemplate(t.id)} style={{
+                  width: '100%', textAlign: 'left', padding: '12px 14px', borderRadius: '10px',
+                  border: template === t.id ? `1.5px solid ${t.color}` : '1.5px solid transparent',
+                  background: template === t.id ? `${t.color}18` : 'rgba(255,255,255,0.03)',
+                  cursor: 'pointer', transition: 'all 0.15s',
+                  display: 'flex', alignItems: 'center', gap: '10px',
+                  fontFamily: 'var(--font-body)',
+                }}>
+                  <div style={{ width: '28px', height: '28px', borderRadius: '6px', background: t.bg, border: `1px solid ${t.color}40`, flexShrink: 0,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <div style={{ width: '10px', height: '10px', borderRadius: '2px', background: t.color, opacity: 0.8 }} />
+                  </div>
+                  <div style={{ flex: 1 }}>
+                    <p style={{ fontWeight: '600', color: 'var(--text-primary)', fontSize: '13px', marginBottom: '1px' }}>{t.name}</p>
+                    <p style={{ color: 'var(--text-muted)', fontSize: '11px' }}>{t.description}</p>
                   </div>
                   {template === t.id && (
-                    <div className="ml-auto">
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={t.color} strokeWidth="2.5" strokeLinecap="round">
-                        <polyline points="20 6 9 17 4 12"/>
-                      </svg>
-                    </div>
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke={t.color} strokeWidth="2.5" strokeLinecap="round">
+                      <polyline points="20 6 9 17 4 12"/>
+                    </svg>
                   )}
                 </button>
               ))}
@@ -173,95 +162,85 @@ export default function WebsitePage() {
           </div>
 
           {/* Customization */}
-          <div style={{ background: 'white', border: '1px solid #EDE8E0', borderRadius: '20px', padding: '20px' }}>
-            <h2 style={{ fontWeight: '600', color: '#2D2016', fontSize: '14px', marginBottom: '14px' }}>Customize</h2>
-            <div className="space-y-3">
+          <div className="glass" style={{ borderRadius: '16px', padding: '20px' }}>
+            <h2 style={{ fontFamily: 'var(--font-display)', fontWeight: '700', color: 'var(--text-primary)', fontSize: '14px', marginBottom: '14px' }}>Customize</h2>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
               {[
-                { key: 'headline', label: 'Headline', placeholder: event.name },
-                { key: 'coupleNames', label: 'Names', placeholder: 'Ana & João' },
-                { key: 'subtitle', label: 'Subtitle', placeholder: "We'd love for you to join us" },
+                { key: 'headline',    label: 'Headline',  placeholder: event.name },
+                { key: 'coupleNames', label: 'Names',     placeholder: 'Ana & João' },
+                { key: 'subtitle',    label: 'Subtitle',  placeholder: "We'd love for you to join us" },
               ].map(field => (
                 <div key={field.key}>
-                  <label style={{ display: 'block', fontSize: '12px', color: '#A08060', marginBottom: '5px' }}>
+                  <label style={{ display: 'block', fontSize: '11px', fontWeight: '600', color: 'var(--text-muted)', letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: '5px' }}>
                     {field.label}
                   </label>
                   <input
                     value={config[field.key] || ''}
                     onChange={e => setConfig({ ...config, [field.key]: e.target.value })}
                     placeholder={field.placeholder}
-                    style={{
-                      width: '100%',
-                      border: '1px solid #EDE8E0',
-                      borderRadius: '10px',
-                      padding: '8px 12px',
-                      fontSize: '13px',
-                      color: '#2D2016',
-                      background: '#FDFAF6',
-                      outline: 'none',
-                    }}
-                    onFocus={e => e.target.style.borderColor = '#C47A3A'}
-                    onBlur={e => e.target.style.borderColor = '#EDE8E0'}
+                    className="input-dark"
+                    style={{ borderRadius: '8px', padding: '8px 12px', fontSize: '13px' }}
                   />
                 </div>
               ))}
             </div>
           </div>
 
-          {/* Published link */}
+          {/* Live link */}
           {event.is_published && (
-            <div style={{ background: '#F0FAF0', border: '1px solid #C8E6C9', borderRadius: '14px', padding: '14px' }}>
-              <p style={{ fontSize: '12px', color: '#2E7D32', fontWeight: '600', marginBottom: '4px' }}>
-                Live at:
+            <div style={{ background: 'rgba(6,214,160,0.08)', border: '1px solid rgba(6,214,160,0.2)', borderRadius: '12px', padding: '14px' }}>
+              <p style={{ fontSize: '11px', fontWeight: '700', color: 'var(--green)', marginBottom: '6px', letterSpacing: '0.06em', textTransform: 'uppercase' }}>
+                Live at
               </p>
               <a href={publicUrl} target="_blank" rel="noopener noreferrer"
-                style={{ fontSize: '12px', color: '#388E3C', wordBreak: 'break-all', textDecoration: 'underline' }}>
+                style={{ fontSize: '12px', color: 'var(--teal)', wordBreak: 'break-all', textDecoration: 'none' }}
+                className="hover:opacity-70 transition-opacity">
                 {publicUrl}
               </a>
             </div>
           )}
         </div>
 
-        {/* Right preview */}
-        <div className="sm:col-span-3">
-          <h2 style={{ fontWeight: '600', color: '#2D2016', fontSize: '14px', marginBottom: '12px' }}>Preview</h2>
-          <div style={{
-            borderRadius: '20px',
-            overflow: 'hidden',
-            border: '1px solid #EDE8E0',
-            background: '#F5F0E8',
-            height: '520px',
-            position: 'relative',
-          }}>
-            {event.is_published ? (
-              <iframe src={publicUrl} className="w-full h-full" title="Preview" />
-            ) : (
-              <div style={{
-                position: 'absolute', inset: 0,
-                display: 'flex', flexDirection: 'column',
-                alignItems: 'center', justifyContent: 'center',
-                textAlign: 'center', padding: '24px',
-              }}>
-                <div style={{
-                  width: '48px', height: '48px', background: 'white',
-                  borderRadius: '14px', display: 'flex', alignItems: 'center',
-                  justifyContent: 'center', marginBottom: '14px',
-                  border: '1px solid #EDE8E0',
-                }}>
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#C47A3A" strokeWidth="1.8" strokeLinecap="round">
-                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
-                    <circle cx="12" cy="12" r="3"/>
-                  </svg>
-                </div>
-                <p style={{ fontWeight: '600', color: '#2D2016', fontSize: '14px', marginBottom: '6px' }}>
-                  Publish to see preview
-                </p>
-                <p style={{ color: '#A08060', fontSize: '12px' }}>
-                  Save your changes then click Publish
-                </p>
+        {/* Right: live preview */}
+        <div>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
+            <h2 style={{ fontFamily: 'var(--font-display)', fontWeight: '700', color: 'var(--text-primary)', fontSize: '14px' }}>
+              Preview
+            </h2>
+            <span style={{ fontSize: '11px', color: 'var(--text-muted)', background: 'rgba(255,255,255,0.05)', border: '1px solid var(--border)', borderRadius: '99px', padding: '3px 10px' }}>
+              Live — updates as you type
+            </span>
+          </div>
+
+          {/* Browser chrome mockup */}
+          <div style={{ border: '1px solid var(--border)', borderRadius: '16px', overflow: 'hidden', background: 'var(--surface)' }}>
+            {/* Fake browser bar */}
+            <div style={{ padding: '10px 14px', borderBottom: '1px solid var(--border-subtle)', display: 'flex', alignItems: 'center', gap: '8px', background: 'rgba(255,255,255,0.03)' }}>
+              <div style={{ display: 'flex', gap: '5px' }}>
+                {['#ff5f57', '#ffbd2e', '#28c840'].map(c => (
+                  <div key={c} style={{ width: '10px', height: '10px', borderRadius: '99px', background: c, opacity: 0.7 }} />
+                ))}
               </div>
-            )}
+              <div style={{ flex: 1, background: 'rgba(255,255,255,0.06)', borderRadius: '6px', padding: '4px 10px', fontSize: '11px', color: 'var(--text-muted)', textAlign: 'center' }}>
+                {publicUrl}
+              </div>
+            </div>
+
+            {/* Scaled template preview */}
+            <div style={{ height: '580px', overflow: 'hidden', position: 'relative', background: '#fff' }}>
+              <div style={{
+                position: 'absolute', top: 0, left: 0,
+                width: '1200px',
+                transformOrigin: 'top left',
+                transform: 'scale(0.42)',
+                pointerEvents: 'none',
+              }}>
+                <PreviewComponent event={previewEvent} />
+              </div>
+            </div>
           </div>
         </div>
+
       </main>
     </div>
   )

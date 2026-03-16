@@ -79,8 +79,8 @@ export default function TemplateRustic({ event }: { event: Event }) {
         <div style={{ margin: '8px', border: `1px solid rgba(122,96,64,0.15)`, borderRadius: '1px', minHeight: 'calc(100vh - 56px)', padding: '48px 32px' }}>
 
           {/* Corner botanicals */}
-          <div style={{ position: 'fixed', top: '28px', left: '28px', opacity: 0.7 }}><LeafCorner color={muted} /></div>
-          <div style={{ position: 'fixed', top: '28px', right: '28px', opacity: 0.7 }}><LeafCorner color={muted} flip /></div>
+          <div style={{ position: 'absolute', top: '28px', left: '28px', opacity: 0.7 }}><LeafCorner color={muted} /></div>
+          <div style={{ position: 'absolute', top: '28px', right: '28px', opacity: 0.7 }}><LeafCorner color={muted} flip /></div>
 
           {/* Header */}
           <div style={{ textAlign: 'center', maxWidth: '640px', margin: '0 auto' }}>
