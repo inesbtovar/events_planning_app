@@ -59,13 +59,11 @@ export default async function DashboardPage() {
               const guestCount = (event.guests as any)?.[0]?.count ?? 0
               return (
                 <Link key={event.id} href={`/dashboard/${event.id}`}
-                  className={`glass animate-fade-up-delay-${Math.min(i + 1, 4)}`}
+                  className={`glass card-hover animate-fade-up-delay-${Math.min(i + 1, 4)}`}
                   style={{
                     borderRadius: '16px', padding: '24px', display: 'block',
-                    textDecoration: 'none', transition: 'border-color 0.2s, transform 0.2s',
+                    textDecoration: 'none',
                   }}
-                  onMouseEnter={e => { (e.currentTarget as HTMLAnchorElement).style.borderColor = 'rgba(10,191,188,0.35)'; (e.currentTarget as HTMLAnchorElement).style.transform = 'translateY(-2px)' }}
-                  onMouseLeave={e => { (e.currentTarget as HTMLAnchorElement).style.borderColor = 'var(--border)'; (e.currentTarget as HTMLAnchorElement).style.transform = 'translateY(0)' }}
                 >
                   <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '12px' }}>
                     <div style={{ minWidth: 0 }}>
