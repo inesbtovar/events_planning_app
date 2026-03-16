@@ -76,7 +76,7 @@ export default function LandingPage() {
           <span style={{ fontFamily: 'var(--font-display)', fontSize: '18px', fontWeight: '700', color: 'var(--text-primary)', letterSpacing: '-0.3px' }}>EventsDock</span>
         </div>
         <div className="flex items-center gap-1">
-          <Link href="/contact" style={{ color: 'var(--text-secondary)', fontSize: '14px', padding: '8px 14px', borderRadius: '8px' }} className="hover:text-white transition-colors">Help</Link>
+          <Link href="/pricing" style={{ color: 'var(--text-secondary)', fontSize: '14px', padding: '8px 14px', borderRadius: '8px' }} className="hover:text-white transition-colors">Pricing</Link>
           <Link href="/login" style={{ color: 'var(--text-secondary)', fontSize: '14px', padding: '8px 14px', borderRadius: '8px' }} className="hover:text-white transition-colors">Sign in</Link>
           <Link href="/register" className="btn-primary" style={{ padding: '9px 18px', borderRadius: '8px', fontSize: '14px', marginLeft: '4px' }}>
             Get started free
@@ -86,10 +86,10 @@ export default function LandingPage() {
 
       {/* Hero */}
       <section className="max-w-5xl mx-auto px-6 pt-28 pb-16 text-center" style={{ position: 'relative', zIndex: 1 }}>
-        {/*<div className="animate-fade-up" style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', background: 'var(--teal-glow)', border: '1px solid var(--border)', borderRadius: '99px', padding: '5px 16px 5px 8px', fontSize: '13px', color: 'var(--teal)', marginBottom: '40px' }}>
+        <div className="animate-fade-up" style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', background: 'var(--teal-glow)', border: '1px solid var(--border)', borderRadius: '99px', padding: '5px 16px 5px 8px', fontSize: '13px', color: 'var(--teal)', marginBottom: '40px' }}>
           <span style={{ background: 'var(--teal)', borderRadius: '99px', padding: '2px 8px', fontSize: '10px', fontWeight: '700', color: 'var(--navy)', letterSpacing: '0.05em' }}>NEW</span>
           Free during early access
-        </div>*/}
+        </div>
 
         <h1 className="animate-fade-up-1" style={{ fontFamily: 'var(--font-display)', fontSize: 'clamp(44px, 7vw, 80px)', fontWeight: '800', lineHeight: '1.05', letterSpacing: '-2.5px', marginBottom: '28px' }}>
           Events that leave<br />
@@ -191,8 +191,10 @@ export default function LandingPage() {
             © {new Date().getFullYear()} EventsDock. Made for weddings, birthdays & everything in between.
           </p>
           <div className="flex items-center gap-6">
-            <Link href="/contact" style={{ color: 'var(--text-muted)', fontSize: '13px' }} className="hover:text-white transition-colors">Help</Link>
             <Link href="/pricing" style={{ color: 'var(--text-muted)', fontSize: '13px' }} className="hover:text-white transition-colors">Pricing</Link>
+            <Link href="/terms" style={{ color: 'var(--text-muted)', fontSize: '13px' }} className="hover:text-white transition-colors">Terms</Link>
+            <Link href="/privacy" style={{ color: 'var(--text-muted)', fontSize: '13px' }} className="hover:text-white transition-colors">Privacy</Link>
+            <Link href="/cookies" style={{ color: 'var(--text-muted)', fontSize: '13px' }} className="hover:text-white transition-colors">Cookies</Link>
             <Link href="/login" style={{ color: 'var(--text-muted)', fontSize: '13px' }} className="hover:text-white transition-colors">Sign in</Link>
           </div>
         </div>
