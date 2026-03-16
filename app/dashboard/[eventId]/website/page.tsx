@@ -23,6 +23,8 @@ const TEMPLATE_COMPONENTS: Record<string, React.ComponentType<any>> = {
   modern:  TemplateModern,
 }
 
+const INNER_WIDTH = 1280
+
 export default function WebsitePage() {
   const params = useParams()
   const eventId = params.eventId as string
@@ -33,18 +35,27 @@ export default function WebsitePage() {
   const [config, setConfig]         = useState<any>({})
   const [saving, setSaving]         = useState(false)
   const [publishing, setPublishing] = useState(false)
-  const previewRef = useRef<HTMLDivElement>(null)
-  const [scale, setScale] = useState(0.626)
+  const [scale, setScale]           = useState(0.5)
 
+  const containerRef = useRef<HTMLDivElement>(null)
+
+  // Measure container and set scale whenever layout changes
   useEffect(() => {
-    if (!previewRef.current) return
-    const obs = new ResizeObserver(entries => {
-      const w = entries[0].contentRect.width
-      setScale(w / 860)
-    })
-    obs.observe(previewRef.current)
-    return () => obs.disconnect()
-  }, [])
+    function measure() {
+      if (!containerRef.current) return
+      const w = containerRef.current.getBoundingClientRect().width
+      if (w > 0) setScale(w / INNER_WIDTH)
+    }
+    measure()
+    const t = setTimeout(measure, 50)
+    const t2 = setTimeout(measure, 300)
+    window.addEventListener('resize', measure)
+    return () => {
+      clearTimeout(t)
+      clearTimeout(t2)
+      window.removeEventListener('resize', measure)
+    }
+  }, [event])
 
   useEffect(() => {
     if (!eventId) return
@@ -57,22 +68,6 @@ export default function WebsitePage() {
         }
       })
   }, [eventId])
-
-  // Calculate scale so preview fills its container exactly
-  useEffect(() => {
-    function updateScale() {
-      const shell = document.getElementById('preview-shell')
-      const inner = document.getElementById('preview-inner')
-      if (!shell || !inner) return
-      const containerW = shell.getBoundingClientRect().width
-      const scale = containerW / 1280
-      inner.style.setProperty('--preview-scale', String(scale))
-      inner.style.transform = `scale(${scale})`
-    }
-    updateScale()
-    window.addEventListener('resize', updateScale)
-    return () => window.removeEventListener('resize', updateScale)
-  }, [template])
 
   async function save() {
     setSaving(true)
@@ -89,7 +84,10 @@ export default function WebsitePage() {
     const { error } = await supabase
       .from('events').update({ is_published: newState, template, template_config: config }).eq('id', eventId)
     if (error) toast.error(error.message)
-    else { setEvent({ ...event, is_published: newState, template, template_config: config }); toast.success(newState ? 'Event is now live! 🎉' : 'Event unpublished') }
+    else {
+      setEvent({ ...event, is_published: newState, template, template_config: config })
+      toast.success(newState ? 'Event is now live! 🎉' : 'Event unpublished')
+    }
     setPublishing(false)
   }
 
@@ -101,14 +99,7 @@ export default function WebsitePage() {
 
   const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
   const publicUrl = `${appUrl}/event/${event.slug}`
-
-  // Merge saved event data with current editing state for live preview
-  const previewEvent = {
-    ...event,
-    template,
-    template_config: config,
-  }
-
+  const previewEvent = { ...event, template, template_config: config }
   const PreviewComponent = TEMPLATE_COMPONENTS[template] ?? TemplateElegant
 
   return (
@@ -158,7 +149,6 @@ export default function WebsitePage() {
         {/* Left controls */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
 
-          {/* Template picker */}
           <div className="glass" style={{ borderRadius: '16px', padding: '20px' }}>
             <h2 style={{ fontFamily: 'var(--font-display)', fontWeight: '700', color: 'var(--text-primary)', fontSize: '14px', marginBottom: '14px' }}>Template</h2>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
@@ -171,8 +161,7 @@ export default function WebsitePage() {
                   display: 'flex', alignItems: 'center', gap: '10px',
                   fontFamily: 'var(--font-body)',
                 }}>
-                  <div style={{ width: '28px', height: '28px', borderRadius: '6px', background: t.bg, border: `1px solid ${t.color}40`, flexShrink: 0,
-                    display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <div style={{ width: '28px', height: '28px', borderRadius: '6px', background: t.bg, border: `1px solid ${t.color}40`, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                     <div style={{ width: '10px', height: '10px', borderRadius: '2px', background: t.color, opacity: 0.8 }} />
                   </div>
                   <div style={{ flex: 1 }}>
@@ -189,7 +178,6 @@ export default function WebsitePage() {
             </div>
           </div>
 
-          {/* Customization */}
           <div className="glass" style={{ borderRadius: '16px', padding: '20px' }}>
             <h2 style={{ fontFamily: 'var(--font-display)', fontWeight: '700', color: 'var(--text-primary)', fontSize: '14px', marginBottom: '14px' }}>Customize</h2>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
@@ -199,7 +187,7 @@ export default function WebsitePage() {
                 { key: 'subtitle',    label: 'Subtitle',  placeholder: "We'd love for you to join us" },
               ].map(field => (
                 <div key={field.key}>
-                  <label style={{ display: 'block', fontSize: '11px', fontWeight: '600', color: 'var(--text-muted)', letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: '5px' }}>
+                  <label style={{ display: 'block', fontSize: '11px', fontWeight: '600', color: 'var(--text-muted)', letterSpacing: '0.06em', textTransform: 'uppercase' as const, marginBottom: '5px' }}>
                     {field.label}
                   </label>
                   <input
@@ -214,14 +202,11 @@ export default function WebsitePage() {
             </div>
           </div>
 
-          {/* Live link */}
           {event.is_published && (
             <div style={{ background: 'rgba(6,214,160,0.08)', border: '1px solid rgba(6,214,160,0.2)', borderRadius: '12px', padding: '14px' }}>
-              <p style={{ fontSize: '11px', fontWeight: '700', color: 'var(--green)', marginBottom: '6px', letterSpacing: '0.06em', textTransform: 'uppercase' }}>
-                Live at
-              </p>
+              <p style={{ fontSize: '11px', fontWeight: '700', color: 'var(--green)', marginBottom: '6px', letterSpacing: '0.06em', textTransform: 'uppercase' as const }}>Live at</p>
               <a href={publicUrl} target="_blank" rel="noopener noreferrer"
-                style={{ fontSize: '12px', color: 'var(--teal)', wordBreak: 'break-all', textDecoration: 'none' }}
+                style={{ fontSize: '12px', color: 'var(--teal)', wordBreak: 'break-all' as const, textDecoration: 'none' }}
                 className="hover:opacity-70 transition-opacity">
                 {publicUrl}
               </a>
@@ -232,15 +217,12 @@ export default function WebsitePage() {
         {/* Right: live preview */}
         <div>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
-            <h2 style={{ fontFamily: 'var(--font-display)', fontWeight: '700', color: 'var(--text-primary)', fontSize: '14px' }}>
-              Preview
-            </h2>
+            <h2 style={{ fontFamily: 'var(--font-display)', fontWeight: '700', color: 'var(--text-primary)', fontSize: '14px' }}>Preview</h2>
             <span style={{ fontSize: '11px', color: 'var(--text-muted)', background: 'rgba(255,255,255,0.05)', border: '1px solid var(--border)', borderRadius: '99px', padding: '3px 10px' }}>
               Live — updates as you type
             </span>
           </div>
 
-          {/* Browser chrome mockup */}
           <div style={{ border: '1px solid var(--border)', borderRadius: '16px', overflow: 'hidden', background: 'var(--surface)' }}>
             {/* Fake browser bar */}
             <div style={{ padding: '10px 14px', borderBottom: '1px solid var(--border-subtle)', display: 'flex', alignItems: 'center', gap: '8px', background: 'rgba(255,255,255,0.03)' }}>
@@ -249,16 +231,18 @@ export default function WebsitePage() {
                   <div key={c} style={{ width: '10px', height: '10px', borderRadius: '99px', background: c, opacity: 0.7 }} />
                 ))}
               </div>
-              <div style={{ flex: 1, background: 'rgba(255,255,255,0.06)', borderRadius: '6px', padding: '4px 10px', fontSize: '11px', color: 'var(--text-muted)', textAlign: 'center' }}>
+              <div style={{ flex: 1, background: 'rgba(255,255,255,0.06)', borderRadius: '6px', padding: '4px 10px', fontSize: '11px', color: 'var(--text-muted)', textAlign: 'center' as const }}>
                 {publicUrl}
               </div>
             </div>
 
-            {/* Scaled template preview */}
-            <div ref={previewRef} style={{ height: '580px', overflow: 'hidden', position: 'relative', background: '#fff' }}>
+            {/* Preview viewport */}
+            <div ref={containerRef} style={{ height: '580px', overflow: 'hidden', position: 'relative', background: '#fff' }}>
               <div style={{
-                position: 'absolute', top: 0, left: 0,
-                width: '860px',
+                position: 'absolute',
+                top: 0,
+                left: 0,
+                width: `${INNER_WIDTH}px`,
                 transformOrigin: 'top left',
                 transform: `scale(${scale})`,
                 pointerEvents: 'none',
