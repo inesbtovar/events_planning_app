@@ -1,4 +1,6 @@
 // components/templates/TemplateRustic.tsx
+// Design: Warm countryside — cream paper, hand-drawn botanical SVGs, earthy palette, feels printed
+
 type Event = {
   name: string
   date: string
@@ -9,93 +11,186 @@ type Event = {
   slug: string
 }
 
+// Inline botanical SVG divider — hand-drawn feel
+function BotanicalDivider({ color = '#7A6040' }: { color?: string }) {
+  return (
+    <svg width="280" height="32" viewBox="0 0 280 32" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ display: 'block', margin: '0 auto' }}>
+      {/* Central stem */}
+      <path d="M60 16 Q140 14 220 16" stroke={color} strokeWidth="0.8" strokeLinecap="round" opacity="0.6"/>
+      {/* Left leaves */}
+      <path d="M100 16 Q95 8 88 10 Q94 12 100 16" stroke={color} strokeWidth="0.7" fill="none" opacity="0.5"/>
+      <path d="M85 16 Q78 9 70 12 Q78 13 85 16" stroke={color} strokeWidth="0.7" fill="none" opacity="0.4"/>
+      <path d="M110 16 Q107 22 100 21 Q106 18 110 16" stroke={color} strokeWidth="0.7" fill="none" opacity="0.4"/>
+      {/* Right leaves */}
+      <path d="M180 16 Q185 8 192 10 Q186 12 180 16" stroke={color} strokeWidth="0.7" fill="none" opacity="0.5"/>
+      <path d="M195 16 Q202 9 210 12 Q202 13 195 16" stroke={color} strokeWidth="0.7" fill="none" opacity="0.4"/>
+      <path d="M170 16 Q173 22 180 21 Q174 18 170 16" stroke={color} strokeWidth="0.7" fill="none" opacity="0.4"/>
+      {/* Center diamond */}
+      <rect x="137" y="13" width="6" height="6" transform="rotate(45 140 16)" stroke={color} strokeWidth="0.8" fill="none" opacity="0.7"/>
+      {/* Small dots */}
+      <circle cx="120" cy="16" r="1.5" fill={color} opacity="0.3"/>
+      <circle cx="160" cy="16" r="1.5" fill={color} opacity="0.3"/>
+    </svg>
+  )
+}
+
+function LeafCorner({ color = '#7A6040', flip = false }: { color?: string, flip?: boolean }) {
+  return (
+    <svg width="64" height="64" viewBox="0 0 64 64" fill="none" style={{ transform: flip ? 'scaleX(-1)' : 'none' }}>
+      <path d="M8 56 Q8 8 56 8" stroke={color} strokeWidth="0.8" strokeLinecap="round" opacity="0.4"/>
+      <path d="M8 40 Q20 30 28 20" stroke={color} strokeWidth="0.7" strokeLinecap="round" opacity="0.3"/>
+      <path d="M20 8 Q28 18 38 24" stroke={color} strokeWidth="0.7" strokeLinecap="round" opacity="0.3"/>
+      <path d="M16 48 Q12 38 18 30 Q20 40 16 48" stroke={color} strokeWidth="0.7" fill="none" opacity="0.4"/>
+      <path d="M40 14 Q48 18 46 26 Q42 20 40 14" stroke={color} strokeWidth="0.7" fill="none" opacity="0.4"/>
+      <circle cx="14" cy="50" r="1.5" fill={color} opacity="0.3"/>
+      <circle cx="50" cy="14" r="1.5" fill={color} opacity="0.3"/>
+    </svg>
+  )
+}
+
 export default function TemplateRustic({ event }: { event: Event }) {
   const config = event.template_config || {}
+  const brown = '#5C4228'
+  const muted = '#8B6F47'
+  const accent = config.accentColor || '#8B5E3C'
+
   const eventDate = event.date
     ? new Date(event.date).toLocaleDateString('pt-PT', {
         weekday: 'long', day: 'numeric', month: 'long', year: 'numeric'
       })
     : null
+  const eventTime = event.date
+    ? new Date(event.date).toLocaleTimeString('pt-PT', { hour: '2-digit', minute: '2-digit' })
+    : null
 
   return (
-    <div
-      className="min-h-screen text-stone-800"
-      style={{
-        backgroundColor: '#f5f0e8',
-        fontFamily: "'Georgia', serif",
-        backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23c8b89a' fill-opacity='0.1'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`,
-      }}
-    >
-      {/* Decorative border header */}
-      <div className="text-center px-8 pt-16 pb-12">
-        {/* Top ornament */}
-        <div className="flex items-center justify-center gap-4 mb-8">
-          <div className="h-px flex-1 max-w-24 bg-stone-400" />
-          <span className="text-2xl text-stone-500">❦</span>
-          <div className="h-px flex-1 max-w-24 bg-stone-400" />
-        </div>
+    <div style={{
+      minHeight: '100vh',
+      background: '#F5EFE3',
+      fontFamily: "'Georgia', 'Times New Roman', serif",
+      backgroundImage: `
+        url("data:image/svg+xml,%3Csvg width='200' height='200' viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='200' height='200' filter='url(%23n)' opacity='0.03'/%3E%3C/svg%3E"),
+        linear-gradient(160deg, #F8F2E6 0%, #F0E8D5 50%, #EDE0C8 100%)
+      `,
+    }}>
 
-        <p className="text-xs uppercase tracking-[0.4em] text-stone-500 mb-4">
-          Together with their families
-        </p>
+      {/* Outer border frame */}
+      <div style={{ margin: '20px', border: `1px solid rgba(122,96,64,0.25)`, borderRadius: '2px', minHeight: 'calc(100vh - 40px)' }}>
+        <div style={{ margin: '8px', border: `1px solid rgba(122,96,64,0.15)`, borderRadius: '1px', minHeight: 'calc(100vh - 56px)', padding: '48px 32px' }}>
 
-        {config.coupleNames && (
-          <h2 className="text-2xl text-stone-600 mb-2">{config.coupleNames}</h2>
-        )}
+          {/* Corner botanicals */}
+          <div style={{ position: 'fixed', top: '28px', left: '28px', opacity: 0.7 }}><LeafCorner color={muted} /></div>
+          <div style={{ position: 'fixed', top: '28px', right: '28px', opacity: 0.7 }}><LeafCorner color={muted} flip /></div>
 
-        <h1
-          className="text-5xl sm:text-7xl text-stone-800 my-4 leading-tight"
-          style={{ fontFamily: "'Georgia', serif", fontStyle: 'italic' }}
-        >
-          {event.name}
-        </h1>
+          {/* Header */}
+          <div style={{ textAlign: 'center', maxWidth: '640px', margin: '0 auto' }}>
 
-        {/* Bottom ornament */}
-        <div className="flex items-center justify-center gap-4 mt-8">
-          <div className="h-px flex-1 max-w-24 bg-stone-400" />
-          <span className="text-2xl text-stone-500">❦</span>
-          <div className="h-px flex-1 max-w-24 bg-stone-400" />
-        </div>
-      </div>
+            <p style={{ fontSize: '10px', letterSpacing: '0.4em', textTransform: 'uppercase', color: muted, marginBottom: '20px', opacity: 0.8 }}>
+              Com alegria anunciamos
+            </p>
 
-      {/* Cover image */}
-      {event.cover_image && (
-        <div className="mx-8 sm:mx-auto sm:max-w-2xl">
-          <img
-            src={event.cover_image}
-            alt={event.name}
-            className="w-full rounded-sm shadow-md"
-            style={{ filter: 'sepia(15%)' }}
-          />
-        </div>
-      )}
+            <BotanicalDivider color={muted} />
 
-      {/* Details */}
-      <div className="max-w-2xl mx-auto px-8 py-16 text-center">
-        {event.description && (
-          <p className="text-stone-600 italic text-lg leading-relaxed mb-10">
-            {event.description}
-          </p>
-        )}
+            <div style={{ margin: '32px 0' }}>
+              {config.coupleNames && (
+                <p style={{ fontSize: '16px', color: muted, marginBottom: '8px', fontStyle: 'italic' }}>
+                  {config.coupleNames}
+                </p>
+              )}
+              <h1 style={{
+                fontSize: 'clamp(40px, 7vw, 72px)',
+                fontWeight: '400',
+                color: brown,
+                lineHeight: 1.1,
+                fontStyle: 'italic',
+                letterSpacing: '-0.5px',
+                marginBottom: '8px',
+              }}>
+                {config.headline || event.name}
+              </h1>
+              {config.subtitle && (
+                <p style={{ fontSize: '16px', color: muted, fontStyle: 'italic', marginTop: '8px' }}>
+                  {config.subtitle}
+                </p>
+              )}
+            </div>
 
-        <div
-          className="border border-stone-400 rounded-sm p-8 inline-block"
-          style={{
-            background: 'rgba(255,255,255,0.6)',
-            backdropFilter: 'blur(4px)'
-          }}
-        >
-          {eventDate && (
-            <p className="capitalize text-stone-700 text-lg">{eventDate}</p>
+            <BotanicalDivider color={muted} />
+          </div>
+
+          {/* Cover image */}
+          {event.cover_image && (
+            <div style={{ maxWidth: '520px', margin: '40px auto', position: 'relative' }}>
+              <div style={{ border: `6px solid #F5EFE3`, boxShadow: `0 0 0 1px rgba(122,96,64,0.2), 0 8px 32px rgba(92,66,40,0.15)` }}>
+                <img src={event.cover_image} alt={event.name} style={{ width: '100%', display: 'block', filter: 'sepia(10%) contrast(1.02)' }} />
+              </div>
+            </div>
           )}
-          {event.location && (
-            <p className="text-stone-500 mt-2">{event.location}</p>
-          )}
-        </div>
-      </div>
 
-      <div className="border-t border-stone-300 py-6 text-center text-xs text-stone-400">
-        Made with EventsDock
+          {/* Details */}
+          <div style={{ maxWidth: '480px', margin: '40px auto', textAlign: 'center' }}>
+
+            {event.description && (
+              <p style={{ fontSize: '16px', lineHeight: 1.9, color: muted, fontStyle: 'italic', marginBottom: '40px' }}>
+                &ldquo;{event.description}&rdquo;
+              </p>
+            )}
+
+            {/* Date & location card */}
+            {(eventDate || event.location) && (
+              <div style={{
+                border: `1px solid rgba(122,96,64,0.3)`,
+                borderRadius: '2px',
+                padding: '32px',
+                background: 'rgba(255,255,255,0.45)',
+                position: 'relative',
+              }}>
+                {/* Card corner accents */}
+                {[['top', 'left'], ['top', 'right'], ['bottom', 'left'], ['bottom', 'right']].map(([v, h]) => (
+                  <div key={`${v}${h}`} style={{
+                    position: 'absolute', [v]: '-1px', [h]: '-1px',
+                    width: '12px', height: '12px',
+                    borderTop: v === 'top' ? `2px solid ${muted}` : 'none',
+                    borderBottom: v === 'bottom' ? `2px solid ${muted}` : 'none',
+                    borderLeft: h === 'left' ? `2px solid ${muted}` : 'none',
+                    borderRight: h === 'right' ? `2px solid ${muted}` : 'none',
+                    opacity: 0.5,
+                  }} />
+                ))}
+
+                {eventDate && (
+                  <div style={{ marginBottom: event.location ? '24px' : 0 }}>
+                    <p style={{ fontSize: '9px', letterSpacing: '0.35em', textTransform: 'uppercase', color: accent, marginBottom: '8px' }}>Data</p>
+                    <p style={{ fontSize: '16px', color: brown, textTransform: 'capitalize', fontStyle: 'italic' }}>{eventDate}</p>
+                    {eventTime && eventTime !== '00:00' && (
+                      <p style={{ fontSize: '13px', color: muted, marginTop: '4px' }}>às {eventTime}</p>
+                    )}
+                  </div>
+                )}
+
+                {eventDate && event.location && (
+                  <div style={{ width: '40px', height: '1px', background: `rgba(122,96,64,0.3)`, margin: '0 auto 24px' }} />
+                )}
+
+                {event.location && (
+                  <div>
+                    <p style={{ fontSize: '9px', letterSpacing: '0.35em', textTransform: 'uppercase', color: accent, marginBottom: '8px' }}>Local</p>
+                    <p style={{ fontSize: '15px', color: brown, fontStyle: 'italic' }}>{event.location}</p>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* Footer botanical */}
+          <div style={{ textAlign: 'center', marginTop: '48px' }}>
+            <BotanicalDivider color={muted} />
+            <p style={{ fontSize: '9px', letterSpacing: '0.3em', textTransform: 'uppercase', color: muted, marginTop: '20px', opacity: 0.5 }}>
+              EventsDock
+            </p>
+          </div>
+
+        </div>
       </div>
     </div>
   )
